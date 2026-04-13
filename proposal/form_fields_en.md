@@ -5,7 +5,8 @@
 **Technology Readiness Level:** TRL 4–5  
 **Challenge:** UNDP / Wazoku InnoCentive — Build the Future of Crisis Mapping
 
-> Each field is limited to 500 words per InnoCentive requirements.  
+> Field 2 (Solution Overview) is expandable beyond 500 words per InnoCentive guidance.  
+> All other fields are limited to 500 words.  
 > `proposal_en.md` (full 7-chapter proposal) is submitted as an attachment.
 
 ---
@@ -70,6 +71,32 @@ The Re:Earth Visualizer dashboard displays trust-tier color-coded damage pins, b
 Participation incentives are non-monetary and anti-gaming by design: immediate map confirmation ("Your report is now live"), Trust Score feedback visible to the reporter, and Phase 0 community drill pre-registration that builds ownership before disaster strikes. Rapid repeat submissions, AI-generated images, and GPS spoofing are algorithmically penalized by the Trust Score engine.
 
 All six UN official languages are supported: Arabic, Chinese, English, French, Russian, and Spanish.
+
+**Building Footprint Integration**
+
+The Re:Earth Visualizer incorporates building footprint overlays sourced from OpenStreetMap and government cadastral data where available. Reporters can tap a building outline on the map to auto-populate the location field — eliminating GPS ambiguity in dense urban environments and reducing misidentified infrastructure reports. Where footprint data is unavailable, textual landmark description (street name, nearby facility, distance reference) serves as the fallback for unambiguous location capture.
+
+**Report Versioning**
+
+Multiple damage reports for the same building are versioned in the database. The dashboard displays current status (most recent assessment) alongside the full historical record — enabling operators to track deterioration over time, confirm independent corroboration from multiple reporters, and flag conflicting assessments for targeted human review.
+
+**Modular Appendix Questions**
+
+Beyond core damage classification, the form supports optional modular fields for deeper situational awareness:
+
+- **Electricity infrastructure:** Is power available at or near the reported site?
+- **Health services:** Are medical facilities functioning in the surrounding area?
+- **Community needs:** Most pressing requirements at the site (food, water, healthcare, shelter, livelihoods, WASH, infrastructure, protection, local authority support, other)
+
+These fields are optional by default to minimize friction during rapid post-crisis reporting, but are configurable as required fields for specific deployment contexts or UNDP operational requirements.
+
+**Dashboard Decision-Support Flow**
+
+The Re:Earth Visualizer provides three operational views for government and UNDP operators:
+
+1. **Real-time feed:** Incoming reports displayed as trust-tier color-coded pins (green/amber/red), updated as submissions arrive
+2. **Priority zones:** H3 hexagonal clusters highlighting areas with high report density and high trust scores — guiding initial resource deployment decisions
+3. **Export queue:** Operator-curated dataset selection for structured export in GeoJSON, CSV, Shapefile, and REST API formats, directly compatible with OCHA, WFP, HDX, and KoboToolbox workflows
 
 ---
 
@@ -206,6 +233,12 @@ Malicious actors may falsify coordinates to redirect resources.
 - Wardle & Derakhshan (2017). *Information Disorder.* Council of Europe — misinformation in crisis contexts
 - Heinzelman & Waters (2010). *Crowdsourcing Crisis Information in Disaster-Affected Haiti.* USIP — Haiti SMS 4636 case
 - Brodsky (2018). "H3: Uber's Hexagonal Hierarchical Spatial Index." — H3 technical reference
+
+---
+
+## How Did You Hear About This Challenge?
+
+Eukarya Inc. is registered as a digital solutions provider on **UNDP Digital X** — UNDP's platform for identifying and scaling digital innovations for sustainable development. Through our active engagement on Digital X, we were directly recommended to apply to this challenge as a strong fit for Re:Earth's humanitarian geospatial capabilities. This challenge represents a natural extension of the partnership dialogue already underway between Eukarya and UNDP.
 
 ---
 
