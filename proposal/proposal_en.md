@@ -31,7 +31,7 @@ Our key differentiator is a built-in **Trust Verification Engine** — a three-f
 | Dimension | Details |
 |---|---|
 | Platform | Re:Earth WebGIS — Apache-2.0 OSS |
-| Unique Feature | Trust Score Engine — C2PA image verification[^8] + satellite cross-check + cross-report clustering |
+| Unique Feature | Trust Score Engine — AI-generation detection + satellite cross-check + H3 spatial clustering + C2PA when available[^8] |
 | Proven Scale | PLATEAU: 300 municipalities, 30TB[^12] — same infrastructure, scaled for crisis reporting |
 | Honest Scope | Natural disasters + non-shutdown conflicts; explicit out-of-scope for internet-blackout scenarios |
 
@@ -73,7 +73,7 @@ This scope transparency reflects our engineering philosophy: a system that hones
 | Layer | Description |
 |---|---|
 | **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Supports offline-first operation via PWA service worker with Background Sync. |
-| **Layer 2 — Trust Verification Engine** ★ Key Differentiator | Automated data quality assurance: (1) Image authenticity via C2PA standard[^8] + EXIF consistency + AI-generation fingerprint matching; (2) Geospatial consistency via satellite damage analysis cross-reference; (3) Cross-report validation via H3 spatial clustering[^9] and outlier detection; (4) Trust Score (0–100) auto-assigned to each report; (5) Score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
+| **Layer 2 — Trust Verification Engine** ★ Key Differentiator | Automated data quality assurance: (1) Image integrity via AI-generation fingerprint detection + EXIF GPS/timestamp consistency + C2PA verification[^8] when available on the submitting device; (2) Geospatial consistency via satellite damage analysis cross-reference; (3) Cross-report validation via H3 spatial clustering[^9] and outlier detection; (4) Trust Score (0–100) auto-assigned to each report; (5) Score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
 | **Layer 3 — Visualization & Decision Support** (Re:Earth Visualizer) | Government/UNDP dashboard with real-time trust-tier color-coded map, priority area auto-ranking, satellite overlay, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. |
 
 ### 3.2 User Journey
@@ -108,13 +108,15 @@ Offline resilience: Background Sync API queues submissions locally; data transmi
 
 | Factor | Weight | Method |
 |---|---|---|
-| Image Authenticity | 40 pts | C2PA (Content Credentials)[^8] metadata verification; EXIF date/GPS consistency; AI-generation fingerprint pattern matching |
+| Image Integrity | 40 pts | Primary: AI-generation fingerprint detection (frequency-domain analysis applied to all submissions); EXIF GPS/timestamp consistency check; C2PA (Content Credentials)[^8] cryptographic verification applied as a high-confidence bonus where supported by the submitting device. Note: C2PA hardware support remains limited in crisis-affected regions; the scoring model is designed to function without it. |
 | Geospatial Consistency | 30 pts | Reported coordinates cross-referenced against satellite-derived damage probability map; historical baseline comparison |
-| Cross-Report Validation | 20 pts | H3 spatial grid clustering[^9] (resolution 9, ~0.105 km² cells); outlier detection against neighbor report characteristics |
+| Cross-Report Validation | 20 pts | H3 spatial grid clustering[^9] (resolution 9, ~0.105 km² cells); outlier detection against neighbor report characteristics; graceful degradation to neutral score during sparse early-reporting phase |
 | Submission Metadata | 10 pts | Device timestamp plausibility; GPS accuracy radius; submission channel reliability weighting |
 | Score Routing | — | 80–100: High Trust → map display (green) \| 50–79: Review → flagged display (amber) \| 0–49: Verify → human review queue (red) |
 
 > **Political neutrality note:** The Trust Score engine addresses physical/geographical data integrity — verifying that a reported building collapse is real and correctly located. It does NOT evaluate political speech, opinion, or user identity. This keeps the system politically neutral and focused on its humanitarian purpose.
+
+> **Design honesty note:** The Image Integrity factor applies AI-generation detection and EXIF analysis to all submissions. C2PA cryptographic verification contributes as a high-confidence signal when present, but the system is explicitly designed not to require it — ensuring equal treatment of reports from low-end devices and WhatsApp Route C submissions where metadata is stripped in transit.
 
 ---
 

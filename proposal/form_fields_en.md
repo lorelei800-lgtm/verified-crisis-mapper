@@ -55,12 +55,12 @@ Each report is automatically assigned a Trust Score (0–100):
 
 | Factor | Weight |
 |---|---|
-| Image Authenticity (C2PA verification + EXIF consistency + AI fingerprint detection) | 40 pts |
+| Image Integrity (AI-generation detection applied to all submissions; EXIF GPS/timestamp consistency; C2PA cryptographic verification as high-confidence bonus where device-supported) | 40 pts |
 | Geospatial Consistency (satellite damage probability cross-reference) | 30 pts |
-| Cross-Report Validation (H3 spatial clustering, ~105m cells) | 20 pts |
+| Cross-Report Validation (H3 spatial clustering, ~105m cells; neutral score during sparse early-reporting phase) | 20 pts |
 | Submission Metadata (timestamp, GPS accuracy, channel weighting) | 10 pts |
 
-Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <50 → human review queue (red). The engine evaluates physical and geographical integrity only — not political speech or user identity.
+Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <50 → human review queue (red). The engine evaluates physical and geographical integrity only — not political speech or user identity. The scoring model is explicitly designed to function without C2PA, ensuring equal treatment of reports from low-end devices and WhatsApp submissions where metadata is stripped in transit.
 
 **Layer 3 — Visualization & Decision Support**
 
