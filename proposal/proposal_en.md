@@ -47,7 +47,7 @@ In the critical 72 hours[^1] following a major disaster, humanitarian responders
 
 A critical emerging challenge — not addressed in existing crisis reporting tools — is the integrity of crowd-sourced data in the age of generative AI:
 
-- AI-generated fake images of damage (Sora and equivalent tools) can be fabricated at near-zero cost and submitted to reporting systems, misdirecting aid to non-affected areas.[^2]
+- AI-generated fake images of damage can be fabricated at near-zero cost using widely available AI image and video synthesis tools, and submitted to reporting systems, misdirecting aid to non-affected areas.[^2]
 - Coordinated mass-reporting campaigns can manipulate priority rankings for political or logistical gain.[^3]
 - GPS coordinate spoofing can redirect emergency resources to incorrect locations.
 - Recycled images from past disasters (miscontextualized) frequently circulate during active crises.[^3]
@@ -230,4 +230,4 @@ At the time of proposal submission, the following components are operational and
 ---
 
 *Submitted by Eukarya Inc. | info@eukarya.io | github.com/reearth | reearth.io*  
-*Re:Earth — Opening Up Data for All | Apache-2.0 Open Source | Digital Public Good*
+*Re:Earth — Opening Up Data for All | Apache-2.0 Open Source*

@@ -19,7 +19,7 @@ The consequence is predictable: aid concentrates in visible, accessible areas wh
 
 **A New and Unaddressed Threat: AI-Generated Disinformation**
 
-A critical emerging challenge — not addressed by any existing crisis reporting tool — is the integrity of crowd-sourced data in the age of generative AI. Synthetic damage images can now be fabricated at near-zero cost using tools comparable to Sora, with sufficient realism to deceive both automated systems and human reviewers. These images can be submitted to reporting platforms to misdirect aid to non-affected areas — or deny aid to genuinely affected ones.
+A critical emerging challenge — not addressed by any existing crisis reporting tool — is the integrity of crowd-sourced data in the age of generative AI. Synthetic damage images can now be fabricated at near-zero cost using widely available AI image and video synthesis tools, with sufficient realism to deceive both automated systems and human reviewers. These images can be submitted to reporting platforms to misdirect aid to non-affected areas — or deny aid to genuinely affected ones.
 
 Coordinated mass-reporting campaigns can manipulate damage priority rankings for political gain. GPS spoofing redirects emergency resources to incorrect locations. Recycled images from past disasters circulate widely during active crises, amplified by social media. No existing crisis reporting tool — including KoboToolbox, OpenStreetMap Tasking Manager, or Ushahidi — provides systematic automated verification capable of addressing AI-generated content.
 
@@ -140,7 +140,7 @@ The reporting form is designed for one-hand smartphone operation with 3-tap core
 
 **Re:Earth — Production-Proven at National Scale**
 
-Eukarya is the creator and maintainer of Re:Earth, an open-source WebGIS platform recognized as a Digital Public Good (Apache-2.0). Re:Earth serves as the visualization and data management backbone for Japan's national 3D city model initiative, Project PLATEAU — a program of the Ministry of Land, Infrastructure, Transport and Tourism (MLIT) — covering 300 municipalities with approximately 30 terabytes of structured geospatial data. This demonstrates capability to handle national-scale data ingestion, real-time multi-stakeholder visualization, and high-availability infrastructure — the identical requirements as a national crisis reporting system.
+Eukarya is the creator and maintainer of Re:Earth, an open-source WebGIS platform published under the Apache-2.0 license. Re:Earth serves as the visualization and data management backbone for Japan's national 3D city model initiative, Project PLATEAU — a program of the Ministry of Land, Infrastructure, Transport and Tourism (MLIT) — covering 300 municipalities with approximately 30 terabytes of structured geospatial data. This demonstrates capability to handle national-scale data ingestion, real-time multi-stakeholder visualization, and high-availability infrastructure — the identical requirements as a national crisis reporting system.
 
 **Humanitarian Data Ecosystem Compatibility**
 
@@ -224,9 +224,6 @@ Malicious actors may falsify coordinates to redirect resources.
 **Open Source Geospatial Community**
 - FOSS4G / Open Source Geospatial Foundation (OSGeo): https://www.osgeo.org/initiatives/foss4g/
 
-**Digital Public Goods**
-- Digital Public Goods Alliance (Re:Earth recognized as DPG): https://digitalpublicgoods.net
-
 **Key Academic References (full citations in attached proposal_en.md)**
 - OCHA (2013). *Humanitarianism in the Network Age* — "critical 72-hour" framing
 - Chesney & Citron (2019). "Deep Fakes: A Looming Challenge." *California Law Review* — AI disinformation risk
@@ -243,4 +240,4 @@ Eukarya Inc. is registered as a digital solutions provider on **UNDP Digital X**
 ---
 
 *Eukarya Inc. | info@eukarya.io | reearth.io | github.com/reearth*  
-*Re:Earth — Apache-2.0 Open Source | Digital Public Good*
+*Re:Earth — Apache-2.0 Open Source*

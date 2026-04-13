@@ -65,7 +65,7 @@ Built on **Re:Earth** — the world's first scalable open-source WebGIS platform
 
 - License: Apache-2.0
 - Repository: [github.com/reearth](https://github.com/reearth)
-- Recognized as a [Digital Public Good](https://digitalpublicgoods.net/)
+- Published under Apache-2.0 — freely deployable by any government or humanitarian organization
 
 ---
 
