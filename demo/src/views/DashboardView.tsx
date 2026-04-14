@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
 import { mockReports } from '../data/mockReports'
 import type { DamageReport, TrustTier } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
@@ -178,8 +177,8 @@ export default function DashboardView() {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative" style={{ minHeight: '400px' }}>
-        <div ref={mapContainer} className="absolute inset-0" />
+      <div className="flex-1 relative" style={{ minHeight: '400px', minWidth: 0 }}>
+        <div ref={mapContainer} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }} />
 
         {/* Legend */}
         <div className="absolute bottom-6 left-3 bg-white bg-opacity-95 rounded-lg shadow-md p-2 text-xs">
