@@ -96,8 +96,8 @@ export default function DashboardView() {
         box-shadow: 0 2px 6px rgba(0,0,0,0.35);
         cursor: pointer; transition: transform 0.15s;
       `
-      el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.3)' })
-      el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)' })
+      el.addEventListener('mouseenter', () => { el.style.boxShadow = `0 0 0 3px white, 0 0 0 6px ${color}` })
+      el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.35)' })
       el.addEventListener('click', () => setSelectedReport(report))
 
       const marker = new maplibregl.Marker({ element: el })
