@@ -95,12 +95,9 @@ function cmsItemToReport(item: CmsItem): DamageReport {
 export async function fetchCmsReports(): Promise<DamageReport[]> {
   if (!CMS.enabled) return []
 
-  const url = [
-    CMS.baseUrl,
-    'api/projects', CMS.project,
-    'models', CMS.model,
-    'items?page=1&perPage=100',
-  ].join('/')
+  // Re:Earth CMS public API: /api/p/{project}/{model}
+  // e.g. https://api.cms.reearth.io/api/p/verified-crisis-mapper/Demo-v1/damage-report
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}`
 
   try {
     const headers: HeadersInit = {}
@@ -126,7 +123,8 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
 export async function uploadAsset(file: File): Promise<CmsAsset | null> {
   if (!CMS.writable) return null
 
-  const url = `${CMS.baseUrl}/api/projects/${CMS.project}/assets`
+  // Assets endpoint: /api/p/{project}/assets
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/assets`
   const body = new FormData()
   body.append('file', file)
   body.append('name', file.name || 'damage-photo.jpg')
@@ -158,12 +156,8 @@ export async function createReportItem(
 ): Promise<string | null> {
   if (!CMS.writable) return null
 
-  const url = [
-    CMS.baseUrl,
-    'api/projects', CMS.project,
-    'models', CMS.model,
-    'items',
-  ].join('/')
+  // Item create endpoint: POST /api/p/{project}/{model}
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}`
 
   // Re:Earth CMS write API expects an array of { key, value } field objects
   const fields: Array<{ key: string; value: unknown }> = [
