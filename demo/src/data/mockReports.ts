@@ -7,14 +7,15 @@ import type { DamageReport } from '../types'
 // Image sources: Wikimedia Commons (public domain / CC)
 // Thumbnails via Wikimedia thumbnail service
 
-// Curated flood / disaster image filenames from Wikimedia Commons
+// Placeholder photos via picsum.photos (seed-based, deterministic, always available)
+// In production these would be replaced by actual user-uploaded images
 const IMG = {
-  floodStreet:   'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/2011_Thailand_floods_Nakhon_Ratchasima.JPG/400px-2011_Thailand_floods_Nakhon_Ratchasima.JPG',
-  floodHouse:    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Inondations_Var_2010_-_Maison_inondee.jpg/400px-Inondations_Var_2010_-_Maison_inondee.jpg',
-  floodRoad:     'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/2011_Thailand_floods_in_Pathum_Thani.jpg/400px-2011_Thailand_floods_in_Pathum_Thani.jpg',
-  floodCar:      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Bangkok_Flooding_2011_Rangsit.jpg/400px-Bangkok_Flooding_2011_Rangsit.jpg',
-  utilityDamage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flood_damage_road.jpg/400px-Flood_damage_road.jpg',
-  bridgeDamage:  'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Flooded_street_in_Thailand_2011.jpg/400px-Flooded_street_in_Thailand_2011.jpg',
+  floodStreet:   'https://picsum.photos/seed/flood-street/400/220',
+  floodHouse:    'https://picsum.photos/seed/flood-house/400/220',
+  floodRoad:     'https://picsum.photos/seed/flood-road/400/220',
+  floodCar:      'https://picsum.photos/seed/flood-car/400/220',
+  utilityDamage: 'https://picsum.photos/seed/utility-damage/400/220',
+  bridgeDamage:  'https://picsum.photos/seed/bridge-damage/400/220',
 }
 
 export const mockReports: DamageReport[] = [
