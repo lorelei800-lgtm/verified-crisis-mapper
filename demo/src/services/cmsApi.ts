@@ -52,10 +52,8 @@ interface CmsItem {
 }
 
 interface CmsListResponse {
-  items: CmsItem[]
+  results: CmsItem[]   // Re:Earth CMS public API uses "results", not "items"
   totalCount: number
-  page: number
-  perPage: number
 }
 
 // ─── Mapping ────────────────────────────────────────────────────────────────
@@ -107,7 +105,7 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: CmsListResponse = await res.json()
-    return data.items.map(cmsItemToReport)
+    return data.results.map(cmsItemToReport)
   } catch (err) {
     console.warn('[CMS] fetchReports failed — using mock data', err)
     return []
