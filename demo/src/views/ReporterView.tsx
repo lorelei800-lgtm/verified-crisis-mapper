@@ -38,7 +38,8 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null)  // CMS asset URL or blob fallback
   const [cmsError, setCmsError]       = useState<string | null>(null)
 
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRef    = useRef<HTMLInputElement>(null)
+  const cameraRef  = useRef<HTMLInputElement>(null)
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -283,19 +284,31 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
               </button>
             </div>
           ) : (
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="w-full h-48 bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center gap-3 text-blue-400 hover:bg-blue-100 hover:border-blue-500 active:bg-blue-100 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-14 h-14 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-blue-600">Tap to take photo</p>
-                <p className="text-xs text-blue-400 mt-0.5">or choose from library</p>
-              </div>
-            </button>
+            <div className="flex gap-3">
+              {/* Camera button */}
+              <button type="button" onClick={() => cameraRef.current?.click()}
+                className="flex-1 h-36 bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center gap-2 text-blue-400 hover:bg-blue-100 hover:border-blue-500 active:bg-blue-100 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <p className="text-sm font-semibold text-blue-600">Take Photo</p>
+              </button>
+              {/* Library button */}
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="flex-1 h-36 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:bg-gray-100 hover:border-gray-400 active:bg-gray-100 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm font-semibold text-gray-500">From Library</p>
+              </button>
+            </div>
           )}
+          {/* Camera input — forces camera on mobile */}
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+            className="hidden" onChange={handlePhoto} />
+          {/* Library input — shows photo picker */}
           <input ref={fileRef} type="file" accept="image/*"
             className="hidden" onChange={handlePhoto} />
         </section>
