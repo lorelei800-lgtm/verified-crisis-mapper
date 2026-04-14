@@ -74,7 +74,7 @@ This scope transparency reflects our engineering philosophy: a system that hones
 |---|---|
 | **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Supports offline-first operation via PWA service worker with Background Sync. |
 | **Layer 2 — Trust Verification Engine** ★ Key Differentiator | Automated data quality assurance: (1) Image integrity via AI-generation fingerprint detection + EXIF GPS/timestamp consistency + C2PA verification[^8] when available on the submitting device; (2) Geospatial consistency via satellite damage analysis cross-reference; (3) Cross-report validation via H3 spatial clustering[^9] and outlier detection; (4) Trust Score (0–100) auto-assigned to each report; (5) Score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
-| **Layer 3 — Visualization & Decision Support** (Re:Earth Visualizer) | Government/UNDP dashboard with real-time trust-tier color-coded map, priority area auto-ranking, satellite overlay, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. |
+| **Layer 3 — Visualization & Decision Support** (React PWA Dashboard) | Mobile-first, installable Progressive Web App dashboard for government and UNDP operators. Displays real-time trust-tier color-coded map (MapLibre GL JS + satellite imagery), priority area auto-ranking, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. Runs on any smartphone or desktop browser — no separate app installation required beyond the single PWA. |
 
 ### 3.2 User Journey
 
@@ -100,9 +100,9 @@ Offline resilience: Background Sync API queues submissions locally; data transmi
 
 #### Phase 3 — Command & Decision: Real-Time Situational Awareness
 
-![Phase 3 — Government and UNDP officials view Re:Earth Visualizer dashboard](images/phase_3.png)
+![Phase 3 — Government and UNDP officials view Verified Crisis Mapper dashboard](images/phase_3.png)
 
-*Fig. 3 — Government and UNDP officials in a joint operations center view the Re:Earth Visualizer dashboard. Color-coded pins and priority zone circles guide resource deployment decisions.*
+*Fig. 3 — Government and UNDP officials in a joint operations center view the Verified Crisis Mapper dashboard. Trust-tier color-coded pins (green/amber/red) and satellite imagery guide resource deployment decisions. The same PWA used for field reporting doubles as the operator dashboard — a single codebase for all users.*
 
 ### 3.3 Trust Score Engine — Technical Design
 
@@ -126,7 +126,7 @@ Offline resilience: Background Sync API queues submissions locally; data transmi
 
 | Component | Technology |
 |---|---|
-| Frontend / Visualization | Re:Earth Visualizer — React, TypeScript, CesiumJS (WGS84 globe) |
+| Frontend / Visualization | React PWA + MapLibre GL JS — mobile-first, installable, Apache-2.0 OSS |
 | Backend / CMS | Re:Earth CMS — Go, Rust; headless CMS with REST/GraphQL API |
 | Plugin System | WebAssembly-based sandboxed plugin runtime |
 | Offline / PWA | Service Worker + Background Sync API; IndexedDB local storage |
@@ -175,10 +175,13 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 
 At the time of proposal submission, the following components are operational and demonstrable via live URL:
 
-- Re:Earth CMS: Damage report schema with trust_score fields, form deployment, API access
-- Re:Earth Visualizer: Real-time map with trust-score color coding, priority area ranking, satellite overlay
-- Trust Score MVP: Mock implementation demonstrating the full scoring pipeline and routing logic
-- PWA offline functionality: Form caches on-device, Background Sync queues submissions for deferred transmission
+**Live demo:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
+
+- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS capture, damage classification, and real-time Trust Score result display
+- **Operator Dashboard:** React + MapLibre GL JS satellite map with 28 color-coded reports (Bangkok flood scenario), tier filtering, and per-report Trust Score breakdown
+- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors
+- **Form → Map integration:** Reports submitted via the PWA appear live on the dashboard map
+- **Re:Earth CMS:** Damage report schema with trust_score fields — backend for production deployment
 
 > **Implementation note:** Full Trust Score engine implementation (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection. The prototype demonstrates the complete user journey and data model — the verification layer is architected and documented, using simulated scoring for the prototype demo.
 

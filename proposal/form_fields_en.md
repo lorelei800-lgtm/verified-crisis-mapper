@@ -64,7 +64,9 @@ Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <
 
 **Layer 3 — Visualization & Decision Support**
 
-The Re:Earth Visualizer dashboard displays trust-tier color-coded damage pins, building footprint overlays, priority area rankings, and satellite imagery. Data exports in GeoJSON, CSV, Shapefile, and REST API — compatible with HDX, OCHA IM Toolbox, KoboToolbox, and WFP systems.
+The Verified Crisis Mapper dashboard — a React Progressive Web App with MapLibre GL JS satellite imagery — displays trust-tier color-coded damage pins (green/amber/red), priority area rankings, and per-report Trust Score breakdowns. The same PWA used by field reporters doubles as the operator dashboard, requiring no separate installation. Data exports in GeoJSON, CSV, Shapefile, and REST API — compatible with HDX, OCHA IM Toolbox, KoboToolbox, and WFP systems.
+
+**Live prototype:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
 
 **Engagement Without Gaming**
 
@@ -74,7 +76,7 @@ All six UN official languages are supported: Arabic, Chinese, English, French, R
 
 **Building Footprint Integration**
 
-The Re:Earth Visualizer incorporates building footprint overlays sourced from OpenStreetMap and government cadastral data where available. Reporters can tap a building outline on the map to auto-populate the location field — eliminating GPS ambiguity in dense urban environments and reducing misidentified infrastructure reports. Where footprint data is unavailable, textual landmark description (street name, nearby facility, distance reference) serves as the fallback for unambiguous location capture.
+The React PWA dashboard incorporates building footprint overlays sourced from OpenStreetMap and government cadastral data where available. Reporters can tap a building outline on the map to auto-populate the location field — eliminating GPS ambiguity in dense urban environments and reducing misidentified infrastructure reports. Where footprint data is unavailable, textual landmark description (street name, nearby facility, distance reference) serves as the fallback for unambiguous location capture.
 
 **Report Versioning**
 
@@ -92,7 +94,7 @@ These fields are optional by default to minimize friction during rapid post-cris
 
 **Dashboard Decision-Support Flow**
 
-The Re:Earth Visualizer provides three operational views for government and UNDP operators:
+The Verified Crisis Mapper React PWA dashboard provides three operational views for government and UNDP operators:
 
 1. **Real-time feed:** Incoming reports displayed as trust-tier color-coded pins (green/amber/red), updated as submissions arrive
 2. **Priority zones:** H3 hexagonal clusters highlighting areas with high report density and high trust scores — guiding initial resource deployment decisions
@@ -112,7 +114,7 @@ The base platform is available at zero licensing cost under Apache-2.0. This sig
 
 The award will fund conversion of Verified Crisis Mapper into a reusable, distributable product:
 
-- **Re:Earth plugin development:** Packaging the crisis reporting form, Trust Score Engine, and dashboard as a self-contained plugin deployable on any Re:Earth instance
+- **React PWA productization:** Packaging the crisis reporting form, Trust Score Engine, and MapLibre dashboard as a standalone deployable application, with Re:Earth CMS as the backend data layer
 - **Standalone service packaging:** Docker containerization enabling any government, NGO, or UNDP field team to self-host independently
 - **WhatsApp Business API integration:** Bot development and multi-region testing
 - **Multilingual UI completion:** Arabic, Chinese, French, Russian, Spanish
