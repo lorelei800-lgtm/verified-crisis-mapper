@@ -24,6 +24,7 @@ export default function DashboardView({ submittedReports = [] }: Props) {
 
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
   const [tierFilter, setTierFilter]         = useState<TrustTier | 'all'>('all')
+  const [mapReady, setMapReady]             = useState(false)
 
   // CMS fetch state
   const [cmsReports, setCmsReports] = useState<DamageReport[] | null>(null)  // null = loading
@@ -94,11 +95,6 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     [allReports, tierFilter]
   )
 
-  // Always-current ref so the map.on('load') callback sees the latest reports,
-  // even when CMS data arrives before the map finishes initialising.
-  const filteredReportsRef = useRef(filteredReports)
-  filteredReportsRef.current = filteredReports
-
   // ── Map initialisation ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
@@ -127,9 +123,9 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
     mapRef.current = map
 
-    // Use ref so we get whatever filteredReports is at load time
-    // (CMS fetch may have already completed before the map finishes loading)
-    map.on('load', () => addMarkers(map, filteredReportsRef.current))
+    // Setting mapReady=true triggers the marker-render effect with whatever
+    // filteredReports is at that moment (CMS may have already returned by now)
+    map.on('load', () => setMapReady(true))
 
     return () => {
       markersRef.current.forEach(m => m.remove())
@@ -138,14 +134,16 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-render markers when filter or report list changes
+  // Re-render markers whenever filteredReports changes OR the map becomes ready.
+  // Including mapReady in deps ensures the correct data is used at map load time,
+  // regardless of whether CMS fetch finished before or after the map initialised.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.loaded()) return
+    if (!mapReady || !map) return
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
     addMarkers(map, filteredReports)
-  }, [filteredReports])
+  }, [filteredReports, mapReady])
 
   function addMarkers(map: maplibregl.Map, reports: DamageReport[]) {
     reports.forEach(report => {
