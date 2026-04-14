@@ -40,10 +40,15 @@ jobs:
         working-directory: demo
         run: npm run build
 
+      - name: Prepare Pages structure
+        run: |
+          mkdir -p _site/demo
+          cp -r demo/dist/* _site/demo/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: demo/dist
+          path: _site
 
   deploy:
     needs: build
