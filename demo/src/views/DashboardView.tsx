@@ -94,6 +94,11 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     [allReports, tierFilter]
   )
 
+  // Always-current ref so the map.on('load') callback sees the latest reports,
+  // even when CMS data arrives before the map finishes initialising.
+  const filteredReportsRef = useRef(filteredReports)
+  filteredReportsRef.current = filteredReports
+
   // ── Map initialisation ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
@@ -122,7 +127,9 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
     mapRef.current = map
 
-    map.on('load', () => addMarkers(map, allReports))
+    // Use ref so we get whatever filteredReports is at load time
+    // (CMS fetch may have already completed before the map finishes loading)
+    map.on('load', () => addMarkers(map, filteredReportsRef.current))
 
     return () => {
       markersRef.current.forEach(m => m.remove())
