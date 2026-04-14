@@ -1,15 +1,20 @@
 import { useState, useRef } from 'react'
-import type { DamageLevel, InfraType, SubmissionChannel } from '../types'
+import type { DamageLevel, InfraType, SubmissionChannel, DamageReport } from '../types'
 import { calculateDemoTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 
 interface Props {
   onViewDashboard: () => void
+  onNewReport: (report: DamageReport) => void
 }
 
 type FormStep = 'form' | 'submitting' | 'result'
 
-export default function ReporterView({ onViewDashboard }: Props) {
+// Demo: fixed coordinates near Don Mueang (simulated GPS)
+const DEMO_LAT = 13.9051
+const DEMO_LNG = 100.5988
+
+export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
   const [step, setStep] = useState<FormStep>('form')
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [damageLevel, setDamageLevel] = useState<DamageLevel | ''>('')
@@ -31,7 +36,6 @@ export default function ReporterView({ onViewDashboard }: Props) {
   const handleGps = () => {
     setGpsStatus('acquiring')
     setTimeout(() => {
-      // Simulate GPS acquisition
       setGpsAccuracy(12)
       setGpsStatus('acquired')
     }, 1500)
@@ -49,6 +53,24 @@ export default function ReporterView({ onViewDashboard }: Props) {
     })
     setTimeout(() => {
       setTrustResult(score)
+      // Build and register the new report
+      const newReport: DamageReport = {
+        id: `RPT-${Date.now().toString().slice(-4)}`,
+        lat: DEMO_LAT + (Math.random() - 0.5) * 0.02,
+        lng: DEMO_LNG + (Math.random() - 0.5) * 0.02,
+        damageLevel: damageLevel as DamageLevel,
+        infraType: infraType as InfraType,
+        landmark: landmark || 'Don Mueang area (demo GPS)',
+        district: 'Don Mueang',
+        timestamp: new Date().toISOString(),
+        channel,
+        trustScore: score,
+        tier: getTier(score.total),
+        h3Cell: '8865b1b6dffffff',
+        hasC2PA: false,
+        imageUrl: photoPreview ?? undefined,
+      }
+      onNewReport(newReport)
       setStep('result')
     }, 1800)
   }
@@ -85,7 +107,7 @@ export default function ReporterView({ onViewDashboard }: Props) {
         {/* Result card */}
         <div className={`w-full rounded-xl border-2 ${colors.border} ${colors.bg} p-5`}>
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold text-white`}
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold text-white"
               style={{ backgroundColor: colors.hex }}>
               {trustResult.total}
             </div>
@@ -95,7 +117,10 @@ export default function ReporterView({ onViewDashboard }: Props) {
             </div>
           </div>
 
-          {/* Score breakdown */}
+          {photoPreview && (
+            <img src={photoPreview} alt="submitted" className="w-full h-32 object-cover rounded-lg mb-4" />
+          )}
+
           <div className="space-y-2">
             <ScoreBar label="Image Integrity" value={trustResult.imageIntegrity} max={40} color={colors.hex} />
             <ScoreBar label="Geospatial" value={trustResult.geospatial} max={30} color={colors.hex} />
@@ -131,7 +156,7 @@ export default function ReporterView({ onViewDashboard }: Props) {
 
   // ---- FORM ----
   return (
-    <div className="flex-1 max-w-md mx-auto w-full p-4">
+    <div className="flex-1 max-w-md mx-auto w-full p-4 overflow-y-auto">
       {/* Scenario banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
         <strong>Demo Scenario:</strong> Bangkok Flood, October 2026 · Don Mueang / Pathum Thani

@@ -1,16 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
 import type { DamageReport, TrustTier } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 
-const TIER_FILTERS: { label: string; tier: TrustTier | 'all' }[] = [
-  { label: 'All (28)', tier: 'all' },
-  { label: 'Green (10)', tier: 'green' },
-  { label: 'Amber (11)', tier: 'amber' },
-  { label: 'Red (7)', tier: 'red' },
-]
+interface Props {
+  submittedReports?: DamageReport[]
+}
 
 // Bangkok flood area bounds
 const BOUNDS: maplibregl.LngLatBoundsLike = [
@@ -18,17 +15,36 @@ const BOUNDS: maplibregl.LngLatBoundsLike = [
   [100.65, 14.07],  // NE
 ]
 
-export default function DashboardView() {
+export default function DashboardView({ submittedReports = [] }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<maplibregl.Marker[]>([])
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
   const [tierFilter, setTierFilter] = useState<TrustTier | 'all'>('all')
-  const [stats] = useState({
-    green: mockReports.filter(r => r.tier === 'green').length,
-    amber: mockReports.filter(r => r.tier === 'amber').length,
-    red: mockReports.filter(r => r.tier === 'red').length,
-  })
+
+  // Merge mock + submitted reports (submitted appear first)
+  const allReports = useMemo(
+    () => [...submittedReports, ...mockReports],
+    [submittedReports]
+  )
+
+  const stats = useMemo(() => ({
+    green: allReports.filter(r => r.tier === 'green').length,
+    amber: allReports.filter(r => r.tier === 'amber').length,
+    red: allReports.filter(r => r.tier === 'red').length,
+  }), [allReports])
+
+  const tierFilters = useMemo(() => [
+    { label: `All (${allReports.length})`, tier: 'all' as const },
+    { label: `Green (${stats.green})`, tier: 'green' as const },
+    { label: `Amber (${stats.amber})`, tier: 'amber' as const },
+    { label: `Red (${stats.red})`, tier: 'red' as const },
+  ], [allReports.length, stats])
+
+  const filteredReports = useMemo(
+    () => tierFilter === 'all' ? allReports : allReports.filter(r => r.tier === tierFilter),
+    [allReports, tierFilter]
+  )
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
@@ -48,13 +64,7 @@ export default function DashboardView() {
             maxzoom: 18,
           },
         },
-        layers: [
-          {
-            id: 'esri-satellite',
-            type: 'raster',
-            source: 'esri-satellite',
-          },
-        ],
+        layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri-satellite' }],
       },
       bounds: BOUNDS,
       fitBoundsOptions: { padding: 40 },
@@ -63,41 +73,44 @@ export default function DashboardView() {
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
     mapRef.current = map
 
-    map.on('load', () => {
-      addMarkers(map, mockReports)
-    })
+    map.on('load', () => addMarkers(map, allReports))
 
     return () => {
       markersRef.current.forEach(m => m.remove())
       map.remove()
       mapRef.current = null
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-filter markers when tier filter changes
+  // Re-render markers when filter or reports change
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.loaded()) return
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
-    const filtered = tierFilter === 'all' ? mockReports : mockReports.filter(r => r.tier === tierFilter)
-    addMarkers(map, filtered)
-  }, [tierFilter])
+    addMarkers(map, filteredReports)
+  }, [filteredReports])
 
   function addMarkers(map: maplibregl.Map, reports: DamageReport[]) {
     reports.forEach(report => {
       const color = tierColors[report.tier].hex
+      const isNew = submittedReports.some(r => r.id === report.id)
 
-      // Create SVG marker
       const el = document.createElement('div')
       el.style.cssText = `
-        width: 22px; height: 22px; border-radius: 50%;
-        background: ${color}; border: 2.5px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-        cursor: pointer; transition: transform 0.15s;
+        width: ${isNew ? '26px' : '22px'}; height: ${isNew ? '26px' : '22px'};
+        border-radius: 50%;
+        background: ${color};
+        border: ${isNew ? '3px solid white' : '2.5px solid white'};
+        box-shadow: ${isNew ? `0 0 0 2px ${color}, 0 4px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.35)'};
+        cursor: pointer;
       `
       el.addEventListener('mouseenter', () => { el.style.boxShadow = `0 0 0 3px white, 0 0 0 6px ${color}` })
-      el.addEventListener('mouseleave', () => { el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.35)' })
+      el.addEventListener('mouseleave', () => {
+        el.style.boxShadow = isNew
+          ? `0 0 0 2px ${color}, 0 4px 8px rgba(0,0,0,0.4)`
+          : '0 2px 6px rgba(0,0,0,0.35)'
+      })
       el.addEventListener('click', () => setSelectedReport(report))
 
       const marker = new maplibregl.Marker({ element: el })
@@ -115,10 +128,14 @@ export default function DashboardView() {
         {/* Stats header */}
         <div className="p-3 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700 mb-2">Bangkok Flood Response</h2>
+          {submittedReports.length > 0 && (
+            <div className="mb-2 text-xs bg-green-50 border border-green-200 rounded px-2 py-1 text-green-700">
+              +{submittedReports.length} report{submittedReports.length > 1 ? 's' : ''} submitted this session
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2">
             {(['green', 'amber', 'red'] as TrustTier[]).map(tier => (
-              <div key={tier}
-                className={`rounded-lg p-2 text-center ${tierColors[tier].bg}`}>
+              <div key={tier} className={`rounded-lg p-2 text-center ${tierColors[tier].bg}`}>
                 <div className={`text-lg font-bold ${tierColors[tier].text}`}>{stats[tier]}</div>
                 <div className={`text-xs ${tierColors[tier].text} opacity-80`}>{getTierLabel(tier)}</div>
               </div>
@@ -129,9 +146,8 @@ export default function DashboardView() {
         {/* Filter */}
         <div className="p-3 border-b border-gray-100">
           <div className="flex gap-1 flex-wrap">
-            {TIER_FILTERS.map(f => (
-              <button key={f.tier}
-                onClick={() => setTierFilter(f.tier)}
+            {tierFilters.map(f => (
+              <button key={f.tier} onClick={() => setTierFilter(f.tier)}
                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                   tierFilter === f.tier
                     ? f.tier === 'all' ? 'bg-gray-700 text-white'
@@ -148,31 +164,36 @@ export default function DashboardView() {
 
         {/* Report list */}
         <div className="flex-1 overflow-y-auto">
-          {(tierFilter === 'all' ? mockReports : mockReports.filter(r => r.tier === tierFilter)).map(report => (
-            <button key={report.id}
-              onClick={() => {
-                setSelectedReport(report)
-                mapRef.current?.flyTo({ center: [report.lng, report.lat], zoom: 14 })
-              }}
-              className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                selectedReport?.id === report.id ? 'bg-blue-50' : ''
-              }`}>
-              <div className="flex items-start gap-2">
-                <div className="w-3 h-3 rounded-full mt-0.5 shrink-0"
-                  style={{ backgroundColor: tierColors[report.tier].hex }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-semibold text-gray-800 truncate">{report.id}</span>
-                    <span className="text-xs font-bold" style={{ color: tierColors[report.tier].hex }}>
-                      {report.trustScore.total}
-                    </span>
+          {filteredReports.map(report => {
+            const isNew = submittedReports.some(r => r.id === report.id)
+            return (
+              <button key={report.id}
+                onClick={() => {
+                  setSelectedReport(report)
+                  mapRef.current?.flyTo({ center: [report.lng, report.lat], zoom: 14 })
+                }}
+                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                  selectedReport?.id === report.id ? 'bg-blue-50' : isNew ? 'bg-green-50' : ''
+                }`}>
+                <div className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-full mt-0.5 shrink-0"
+                    style={{ backgroundColor: tierColors[report.tier].hex }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-gray-800 truncate">
+                        {report.id} {isNew && <span className="text-green-600">★ New</span>}
+                      </span>
+                      <span className="text-xs font-bold" style={{ color: tierColors[report.tier].hex }}>
+                        {report.trustScore.total}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
+                    <div className="text-xs text-gray-400 truncate">{report.landmark}</div>
                   </div>
-                  <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
-                  <div className="text-xs text-gray-400 truncate">{report.landmark}</div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -210,6 +231,17 @@ export default function DashboardView() {
               <button onClick={() => setSelectedReport(null)}
                 className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
             </div>
+
+            {/* Photo */}
+            {selectedReport.imageUrl && (
+              <img
+                src={selectedReport.imageUrl}
+                alt="damage photo"
+                className="w-full h-36 object-cover"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            )}
+
             {/* Body */}
             <div className="p-3 space-y-1.5 text-xs">
               <InfoRow label="District" value={selectedReport.district} />
@@ -220,7 +252,6 @@ export default function DashboardView() {
               <div className="pt-1 border-t border-gray-100">
                 <p className="text-gray-500 italic truncate">{selectedReport.landmark}</p>
               </div>
-              {/* Mini score bars */}
               <div className="pt-1 space-y-1">
                 <MiniBar label="Image" value={selectedReport.trustScore.imageIntegrity} max={40} color={tierColors[selectedReport.tier].hex} />
                 <MiniBar label="Geo" value={selectedReport.trustScore.geospatial} max={30} color={tierColors[selectedReport.tier].hex} />

@@ -3,6 +3,19 @@ import type { DamageReport } from '../types'
 // Bangkok Flood Scenario — October 2026
 // 28 reports across Don Mueang, Bang Sue, Phra Nakhon, Chatuchak, Pathum Thani
 // Distribution: 10 green (≥80), 11 amber (50–79), 7 red (<50)
+//
+// Image sources: Wikimedia Commons (public domain / CC)
+// Thumbnails via Wikimedia thumbnail service
+
+// Curated flood / disaster image filenames from Wikimedia Commons
+const IMG = {
+  floodStreet:   'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/2011_Thailand_floods_Nakhon_Ratchasima.JPG/400px-2011_Thailand_floods_Nakhon_Ratchasima.JPG',
+  floodHouse:    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Inondations_Var_2010_-_Maison_inondee.jpg/400px-Inondations_Var_2010_-_Maison_inondee.jpg',
+  floodRoad:     'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/2011_Thailand_floods_in_Pathum_Thani.jpg/400px-2011_Thailand_floods_in_Pathum_Thani.jpg',
+  floodCar:      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Bangkok_Flooding_2011_Rangsit.jpg/400px-Bangkok_Flooding_2011_Rangsit.jpg',
+  utilityDamage: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Flood_damage_road.jpg/400px-Flood_damage_road.jpg',
+  bridgeDamage:  'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Flooded_street_in_Thailand_2011.jpg/400px-Flooded_street_in_Thailand_2011.jpg',
+}
 
 export const mockReports: DamageReport[] = [
   // ---- GREEN TIER (≥80) — 10 reports ----
@@ -20,6 +33,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1b6dffffff',
     hasC2PA: true,
+    imageUrl: IMG.floodHouse,
   },
   {
     id: 'RPT-002',
@@ -35,6 +49,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1b6dffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet,
   },
   {
     id: 'RPT-003',
@@ -50,6 +65,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1b4bffffff',
     hasC2PA: true,
+    imageUrl: IMG.utilityDamage,
   },
   {
     id: 'RPT-004',
@@ -65,6 +81,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1b0bffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodRoad,
   },
   {
     id: 'RPT-005',
@@ -80,6 +97,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1a2bffffff',
     hasC2PA: true,
+    imageUrl: IMG.floodHouse,
   },
   {
     id: 'RPT-006',
@@ -95,6 +113,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1a09ffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet,
   },
   {
     id: 'RPT-007',
@@ -110,6 +129,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b18d7ffffff',
     hasC2PA: true,
+    imageUrl: IMG.floodCar,
   },
   {
     id: 'RPT-008',
@@ -125,6 +145,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b18d7ffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet,
   },
   {
     id: 'RPT-009',
@@ -140,6 +161,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1e4bffffff',
     hasC2PA: true,
+    imageUrl: IMG.floodRoad,
   },
   {
     id: 'RPT-010',
@@ -155,6 +177,7 @@ export const mockReports: DamageReport[] = [
     tier: 'green',
     h3Cell: '8865b1e69ffffff',
     hasC2PA: false,
+    imageUrl: IMG.bridgeDamage,
   },
 
   // ---- AMBER TIER (50–79) — 11 reports ----
@@ -172,6 +195,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b1e4bffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodHouse,
   },
   {
     id: 'RPT-012',
@@ -202,6 +226,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b1b0bffffff',
     hasC2PA: false,
+    imageUrl: IMG.utilityDamage,
   },
   {
     id: 'RPT-014',
@@ -232,6 +257,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b1a09ffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet,
   },
   {
     id: 'RPT-016',
@@ -262,6 +288,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b18c3ffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodRoad,
   },
   {
     id: 'RPT-018',
@@ -292,6 +319,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b1887ffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet,
   },
   {
     id: 'RPT-020',
@@ -322,6 +350,7 @@ export const mockReports: DamageReport[] = [
     tier: 'amber',
     h3Cell: '8865b1e4bffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodHouse,
   },
 
   // ---- RED TIER (<50) — 7 reports ----
@@ -354,6 +383,7 @@ export const mockReports: DamageReport[] = [
     tier: 'red',
     h3Cell: '8865b1b4bffffff',
     hasC2PA: false,
+    imageUrl: IMG.floodStreet, // shown with "recycled image" flag
   },
   {
     id: 'RPT-024',

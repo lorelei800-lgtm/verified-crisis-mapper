@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { DamageReport } from './types'
 import ReporterView from './views/ReporterView'
 import DashboardView from './views/DashboardView'
 
@@ -6,6 +7,11 @@ type View = 'reporter' | 'dashboard'
 
 export default function App() {
   const [view, setView] = useState<View>('reporter')
+  const [submittedReports, setSubmittedReports] = useState<DamageReport[]>([])
+
+  const handleNewReport = (report: DamageReport) => {
+    setSubmittedReports(prev => [report, ...prev])
+  }
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
@@ -42,17 +48,25 @@ export default function App() {
               }`}
             >
               Dashboard
+              {submittedReports.length > 0 && (
+                <span className="ml-1 bg-green-500 text-white text-xs rounded-full px-1.5">
+                  +{submittedReports.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
         {view === 'reporter' ? (
-          <ReporterView onViewDashboard={() => setView('dashboard')} />
+          <ReporterView
+            onViewDashboard={() => setView('dashboard')}
+            onNewReport={handleNewReport}
+          />
         ) : (
-          <DashboardView />
+          <DashboardView submittedReports={submittedReports} />
         )}
       </main>
 
