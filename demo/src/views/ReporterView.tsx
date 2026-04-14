@@ -253,18 +253,25 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
           <h2 className="text-sm font-semibold text-gray-700 mb-3">1. Photo</h2>
           {photoPreview ? (
             <div className="relative">
-              <img src={photoPreview} alt="damage" className="w-full h-40 object-cover rounded-lg" />
+              <img src={photoPreview} alt="damage" className="w-full h-52 object-cover rounded-xl" />
               <button type="button"
                 onClick={() => { setPhotoPreview(null); setPhotoFile(null) }}
-                className="absolute top-2 right-2 bg-white rounded-full w-6 h-6 text-xs text-gray-600 shadow flex items-center justify-center">
+                className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 text-sm text-gray-600 shadow-md flex items-center justify-center">
                 ✕
               </button>
             </div>
           ) : (
             <button type="button" onClick={() => fileRef.current?.click()}
-              className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors">
-              <span className="text-3xl">📷</span>
-              <span className="text-xs">Tap to take photo or upload</span>
+              className="w-full h-48 bg-blue-50 border-2 border-dashed border-blue-300 rounded-xl flex flex-col items-center justify-center gap-3 text-blue-400 hover:bg-blue-100 hover:border-blue-500 active:bg-blue-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-14 h-14 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-blue-600">Tap to take photo</p>
+                <p className="text-xs text-blue-400 mt-0.5">or choose from library</p>
+              </div>
             </button>
           )}
           <input ref={fileRef} type="file" accept="image/*" capture="environment"
@@ -274,17 +281,22 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
         {/* Step 2 — Damage Level */}
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">2. Damage Level</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex flex-col gap-2">
             {(['minimal', 'partial', 'destroyed'] as DamageLevel[]).map(level => (
               <button key={level} type="button"
                 onClick={() => setDamageLevel(level)}
-                className={`py-2 px-1 rounded-lg border text-xs font-medium transition-colors ${
+                className={`w-full py-4 px-4 rounded-xl border-2 text-sm font-semibold transition-colors flex items-center gap-3 ${
                   damageLevel === level
                     ? level === 'destroyed' ? 'bg-red-600 text-white border-red-600'
                       : level === 'partial' ? 'bg-amber-500 text-white border-amber-500'
                       : 'bg-green-600 text-white border-green-600'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                    : 'border-gray-200 text-gray-600 bg-gray-50 active:bg-gray-100'
                 }`}>
+                <span className={`w-3 h-3 rounded-full shrink-0 ${
+                  level === 'destroyed' ? 'bg-red-400'
+                  : level === 'partial'  ? 'bg-amber-400'
+                  : 'bg-green-400'
+                } ${damageLevel === level ? 'bg-white' : ''}`} />
                 {damageLevelLabel[level]}
               </button>
             ))}
@@ -298,10 +310,10 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
             {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
               <button key={key} type="button"
                 onClick={() => setInfraType(key)}
-                className={`py-1.5 px-2 rounded-lg border text-xs text-left transition-colors ${
+                className={`py-3 px-3 rounded-xl border-2 text-sm font-medium text-left transition-colors active:scale-95 ${
                   infraType === key
                     ? 'bg-blue-700 text-white border-blue-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                    : 'border-gray-200 text-gray-600 bg-gray-50 active:bg-gray-100'
                 }`}>
                 {label}
               </button>
@@ -313,10 +325,10 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">4. Location</h2>
           <button type="button" onClick={handleGps}
-            className={`w-full py-2 rounded-lg border text-sm mb-2 transition-colors ${
-              gpsStatus === 'acquired'  ? 'bg-green-50 border-green-400 text-green-700 font-medium'
+            className={`w-full py-3.5 rounded-xl border-2 text-sm font-medium mb-3 transition-colors ${
+              gpsStatus === 'acquired'  ? 'bg-green-50 border-green-400 text-green-700'
               : gpsStatus === 'acquiring' ? 'bg-blue-50 border-blue-300 text-blue-600'
-              : 'border-gray-300 text-gray-600 hover:border-blue-400'
+              : 'border-gray-200 bg-gray-50 text-gray-600 active:bg-gray-100'
             }`}>
             {gpsStatus === 'idle'      && '📍 Auto-capture GPS location'}
             {gpsStatus === 'acquiring' && '⟳ Acquiring GPS…'}
@@ -331,7 +343,7 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
         {/* Submit */}
         <button type="submit"
           disabled={!damageLevel || !infraType}
-          className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-800 transition-colors">
+          className="w-full py-4 rounded-xl bg-blue-700 text-white font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-800 active:bg-blue-900 transition-colors shadow-md">
           Submit Report
         </button>
       </form>
