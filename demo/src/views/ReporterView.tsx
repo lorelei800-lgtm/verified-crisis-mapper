@@ -296,7 +296,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
               </div>
             </button>
           )}
-          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+          <input ref={fileRef} type="file" accept="image/*"
             className="hidden" onChange={handlePhoto} />
         </section>
 

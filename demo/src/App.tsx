@@ -6,14 +6,36 @@ import DashboardView from './views/DashboardView'
 
 type View = 'reporter' | 'dashboard'
 
+const STORAGE_KEY = 'vcm_submitted_reports'
+
+function loadStoredReports(): DamageReport[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as DamageReport[]
+    // Drop blob URLs — they don't survive page reload
+    return parsed.map(r => ({
+      ...r,
+      imageUrl: r.imageUrl?.startsWith('blob:') ? undefined : r.imageUrl,
+    }))
+  } catch {
+    return []
+  }
+}
+
 export default function App() {
   const [view, setView] = useState<View>('reporter')
-  const [submittedReports, setSubmittedReports] = useState<DamageReport[]>([])
+  const [submittedReports, setSubmittedReports] = useState<DamageReport[]>(loadStoredReports)
   const [config, setConfig] = useState<DeploymentConfig>(DEFAULT_CONFIG)
 
   useEffect(() => {
     fetchDeploymentConfig().then(setConfig)
   }, [])
+
+  // Persist submitted reports to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(submittedReports))
+  }, [submittedReports])
 
   const handleNewReport = (report: DamageReport) => {
     setSubmittedReports(prev => [report, ...prev])
