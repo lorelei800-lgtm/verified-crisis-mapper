@@ -36,6 +36,27 @@ export interface DamageReport {
   hasC2PA: boolean
 }
 
+/**
+ * Deployment configuration fetched from Re:Earth CMS `deployment-config` model.
+ * Controls the app title, map bounds, and allowed reporting area.
+ * Falls back to hardcoded defaults when CMS is not configured.
+ */
+export interface DeploymentConfig {
+  // Display strings
+  title:          string   // e.g. "Bangkok Flood Response"
+  scenario_label: string   // e.g. "Bangkok Flood, October 2026"
+  subtitle:       string   // e.g. "Don Mueang / Pathum Thani"
+  // Map initial view bounds
+  bounds_sw_lat:  number
+  bounds_sw_lng:  number
+  bounds_ne_lat:  number
+  bounds_ne_lng:  number
+  // Allowed reporting area (centre + radius)
+  area_center_lat: number
+  area_center_lng: number
+  area_radius_km:  number  // reports outside this radius get geo score = 0
+}
+
 export interface H3CellSummary {
   h3Index: string
   reports: DamageReport[]

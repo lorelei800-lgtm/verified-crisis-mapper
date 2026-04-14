@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import type { DamageReport } from './types'
+import { useState, useEffect } from 'react'
+import type { DamageReport, DeploymentConfig } from './types'
+import { fetchDeploymentConfig, DEFAULT_CONFIG } from './services/cmsApi'
 import ReporterView from './views/ReporterView'
 import DashboardView from './views/DashboardView'
 
@@ -8,6 +9,11 @@ type View = 'reporter' | 'dashboard'
 export default function App() {
   const [view, setView] = useState<View>('reporter')
   const [submittedReports, setSubmittedReports] = useState<DamageReport[]>([])
+  const [config, setConfig] = useState<DeploymentConfig>(DEFAULT_CONFIG)
+
+  useEffect(() => {
+    fetchDeploymentConfig().then(setConfig)
+  }, [])
 
   const handleNewReport = (report: DamageReport) => {
     setSubmittedReports(prev => [report, ...prev])
@@ -26,7 +32,7 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <div className="font-semibold text-sm leading-tight truncate">Verified Crisis Mapper</div>
-              <div className="text-blue-300 text-xs leading-tight truncate">Bangkok Flood Demo · October 2026</div>
+              <div className="text-blue-300 text-xs leading-tight truncate">{config.scenario_label}</div>
             </div>
           </div>
 
@@ -74,11 +80,12 @@ export default function App() {
       <main className="flex-1 flex flex-col lg:pb-0 pb-16 overflow-hidden" style={{ minHeight: 0 }}>
         {view === 'reporter' ? (
           <ReporterView
+            config={config}
             onViewDashboard={() => setView('dashboard')}
             onNewReport={handleNewReport}
           />
         ) : (
-          <DashboardView submittedReports={submittedReports} />
+          <DashboardView config={config} submittedReports={submittedReports} />
         )}
       </main>
 

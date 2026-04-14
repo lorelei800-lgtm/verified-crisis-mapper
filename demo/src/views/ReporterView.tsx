@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
-import type { DamageLevel, InfraType, SubmissionChannel, DamageReport } from '../types'
+import type { DamageLevel, InfraType, SubmissionChannel, DamageReport, DeploymentConfig } from '../types'
 import { calculateDemoTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 import { uploadAsset, createReportItem } from '../services/cmsApi'
+import { isWithinArea } from '../utils/geo'
 import { CMS } from '../config'
 
 interface Props {
+  config: DeploymentConfig
   onViewDashboard: () => void
   onNewReport: (report: DamageReport) => void
 }
@@ -13,11 +15,7 @@ interface Props {
 type FormStep = 'form' | 'submitting' | 'result'
 type SubmitPhase = 'scoring' | 'uploading' | 'saving' | 'done'
 
-// Demo: fixed coordinates near Don Mueang (simulated GPS)
-const DEMO_LAT = 13.9051
-const DEMO_LNG = 100.5988
-
-export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
+export default function ReporterView({ config, onViewDashboard, onNewReport }: Props) {
   const [step, setStep]               = useState<FormStep>('form')
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('scoring')
 
@@ -30,6 +28,10 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
   const [channel]                     = useState<SubmissionChannel>('pwa')
   const [gpsStatus, setGpsStatus]     = useState<'idle' | 'acquiring' | 'acquired' | 'error'>('idle')
   const [gpsAccuracy, setGpsAccuracy] = useState<number>(50)
+  // Simulated GPS coords (populated when GPS is acquired)
+  const [gpsLat, setGpsLat]           = useState<number>(0)
+  const [gpsLng, setGpsLng]           = useState<number>(0)
+  const [inArea, setInArea]           = useState<boolean>(true)
 
   // Result state
   const [trustResult, setTrustResult] = useState<ReturnType<typeof calculateDemoTrustScore> | null>(null)
@@ -48,6 +50,13 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
   const handleGps = () => {
     setGpsStatus('acquiring')
     setTimeout(() => {
+      // Simulate GPS coordinates near the configured area centre (±0.02°)
+      const lat = config.area_center_lat + (Math.random() - 0.5) * 0.02
+      const lng = config.area_center_lng + (Math.random() - 0.5) * 0.02
+      const within = isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
+      setGpsLat(lat)
+      setGpsLng(lng)
+      setInArea(within)
       setGpsAccuracy(12)
       setGpsStatus('acquired')
     }, 1500)
@@ -67,6 +76,7 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
       hasGps:      gpsStatus === 'acquired',
       gpsAccuracy,
       channel,
+      isInArea:    gpsStatus === 'acquired' ? inArea : true,
     })
 
     // Small delay so the user sees "Calculating Trust Score…" text
@@ -93,14 +103,16 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
     }
 
     // 3. Build the local DamageReport object
+    const reportLat = gpsStatus === 'acquired' ? gpsLat : config.area_center_lat + (Math.random() - 0.5) * 0.02
+    const reportLng = gpsStatus === 'acquired' ? gpsLng : config.area_center_lng + (Math.random() - 0.5) * 0.02
     const newReport: DamageReport = {
       id:         `RPT-${Date.now().toString().slice(-4)}`,
-      lat:        DEMO_LAT + (Math.random() - 0.5) * 0.02,
-      lng:        DEMO_LNG + (Math.random() - 0.5) * 0.02,
+      lat:        reportLat,
+      lng:        reportLng,
       damageLevel: damageLevel as DamageLevel,
       infraType:   infraType  as InfraType,
-      landmark:   landmark || 'Don Mueang area (demo GPS)',
-      district:   'Don Mueang',
+      landmark:   landmark || `${config.subtitle} (demo GPS)`,
+      district:   config.subtitle.split('/')[0].trim(),
       timestamp:  new Date().toISOString(),
       channel,
       trustScore: score,
@@ -134,6 +146,9 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
     setInfraType('')
     setLandmark('')
     setGpsStatus('idle')
+    setGpsLat(0)
+    setGpsLng(0)
+    setInArea(true)
     setTrustResult(null)
     setFinalImageUrl(null)
     setCmsError(null)
@@ -240,11 +255,18 @@ export default function ReporterView({ onViewDashboard, onNewReport }: Props) {
     <div className="flex-1 max-w-md mx-auto w-full p-4 overflow-y-auto">
       {/* Scenario banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
-        <strong>Demo Scenario:</strong> Bangkok Flood, October 2026 · Don Mueang / Pathum Thani
+        <strong>Scenario:</strong> {config.scenario_label} · {config.subtitle}
         {CMS.writable && (
           <span className="ml-2 text-blue-500">· Reports saved to Re:Earth CMS</span>
         )}
       </div>
+
+      {/* Out-of-area warning */}
+      {gpsStatus === 'acquired' && !inArea && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-4 text-xs text-amber-800">
+          <strong>Location outside reporting area.</strong> Geospatial score will be 0 — your report will require manual review.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
 

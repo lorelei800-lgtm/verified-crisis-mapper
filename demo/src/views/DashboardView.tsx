@@ -3,20 +3,16 @@ import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
 import { fetchCmsReports } from '../services/cmsApi'
 import { CMS } from '../config'
-import type { DamageReport, TrustTier } from '../types'
+import type { DamageReport, TrustTier, DeploymentConfig } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 
 interface Props {
+  config: DeploymentConfig
   submittedReports?: DamageReport[]
 }
 
-const BOUNDS: maplibregl.LngLatBoundsLike = [
-  [100.49, 13.76],
-  [100.65, 14.07],
-]
-
-export default function DashboardView({ submittedReports = [] }: Props) {
+export default function DashboardView({ config, submittedReports = [] }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<maplibregl.Map | null>(null)
   const markersRef   = useRef<maplibregl.Marker[]>([])
@@ -77,6 +73,10 @@ export default function DashboardView({ submittedReports = [] }: Props) {
   // ── Map ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
+    const bounds: maplibregl.LngLatBoundsLike = [
+      [config.bounds_sw_lng, config.bounds_sw_lat],
+      [config.bounds_ne_lng, config.bounds_ne_lat],
+    ]
     const map = new maplibregl.Map({
       container: mapContainer.current,
       style: {
@@ -84,7 +84,7 @@ export default function DashboardView({ submittedReports = [] }: Props) {
         sources: { 'esri-satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics', maxzoom: 18 } },
         layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri-satellite' }],
       },
-      bounds: BOUNDS,
+      bounds,
       fitBoundsOptions: { padding: 40 },
     })
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
@@ -92,6 +92,16 @@ export default function DashboardView({ submittedReports = [] }: Props) {
     map.on('load', () => setMapReady(true))
     return () => { markersRef.current.forEach(m => m.remove()); map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When CMS delivers a config different from defaults, re-fit the map bounds
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    map.fitBounds(
+      [[config.bounds_sw_lng, config.bounds_sw_lat], [config.bounds_ne_lng, config.bounds_ne_lat]],
+      { padding: 40, duration: 800 }
+    )
+  }, [config, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const map = mapRef.current
@@ -120,7 +130,7 @@ export default function DashboardView({ submittedReports = [] }: Props) {
       <div className="hidden lg:flex lg:w-80 bg-white border-r border-gray-200 flex-col overflow-hidden">
         <div className="p-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-gray-700">Bangkok Flood Response</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{config.title}</h2>
             <CmsBadge isLoading={isLoading} cmsError={cmsError} />
           </div>
           {submittedReports.length > 0 && (
@@ -195,7 +205,7 @@ export default function DashboardView({ submittedReports = [] }: Props) {
         {/* ── Mobile stats overlay (hidden on desktop) ── */}
         <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md p-2.5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-700">Bangkok Flood Response</span>
+            <span className="text-xs font-semibold text-gray-700">{config.title}</span>
             <CmsBadge isLoading={isLoading} cmsError={cmsError} />
           </div>
           <div className="grid grid-cols-3 gap-1.5 mb-2">

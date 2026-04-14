@@ -28,8 +28,9 @@ export function calculateDemoTrustScore(params: {
   hasGps: boolean
   gpsAccuracy: number   // metres
   channel: 'pwa' | 'browser' | 'whatsapp'
+  isInArea?: boolean    // false → geospatial score forced to 0
 }): TrustScoreBreakdown {
-  const { hasPhoto, hasGps, gpsAccuracy, channel } = params
+  const { hasPhoto, hasGps, gpsAccuracy, channel, isInArea = true } = params
 
   // Image Integrity (0–40)
   let imageIntegrity = 0
@@ -39,8 +40,8 @@ export function calculateDemoTrustScore(params: {
     if (gpsAccuracy < 20) imageIntegrity += 4         // GPS accuracy bonus
   }
 
-  // Geospatial Consistency (0–30): simulated as within known flood zone
-  const geospatial = hasGps ? 24 : 10
+  // Geospatial Consistency (0–30): 0 when GPS coords are outside the allowed area
+  const geospatial = !isInArea ? 0 : hasGps ? 24 : 10
 
   // Cross-Report Validation (0–20): neutral during sparse phase
   const crossReport = 14

@@ -12,8 +12,23 @@
  */
 
 import { CMS } from '../config'
-import type { DamageReport, DamageLevel, InfraType, SubmissionChannel, TrustTier } from '../types'
+import type { DamageReport, DamageLevel, InfraType, SubmissionChannel, TrustTier, DeploymentConfig } from '../types'
 import { getTier } from '../utils/trustScore'
+
+// ─── Deployment defaults ─────────────────────────────────────────────────────
+
+export const DEFAULT_CONFIG: DeploymentConfig = {
+  title:           'Bangkok Flood Response',
+  scenario_label:  'Bangkok Flood, October 2026',
+  subtitle:        'Don Mueang / Pathum Thani',
+  bounds_sw_lat:   13.76,
+  bounds_sw_lng:   100.49,
+  bounds_ne_lat:   14.07,
+  bounds_ne_lng:   100.65,
+  area_center_lat: 13.9051,
+  area_center_lng: 100.5988,
+  area_radius_km:  25,
+}
 
 // ─── CMS response shapes ────────────────────────────────────────────────────
 
@@ -109,6 +124,52 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
   } catch (err) {
     console.warn('[CMS] fetchReports failed — using mock data', err)
     return []
+  }
+}
+
+// ─── Public API: deployment config ──────────────────────────────────────────
+
+/**
+ * Fetch the deployment configuration from Re:Earth CMS `deployment-config` model.
+ * Returns DEFAULT_CONFIG when CMS is not configured or the fetch fails.
+ */
+export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
+  if (!CMS.enabled) return DEFAULT_CONFIG
+
+  // Re:Earth CMS public model alias is `deployment-config` by convention
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/deployment-config`
+
+  try {
+    const headers: HeadersInit = {}
+    if (CMS.token) headers['Authorization'] = `Bearer ${CMS.token}`
+
+    const res = await fetch(url, { headers })
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+
+    const data: { results: Array<Record<string, unknown>> } = await res.json()
+    const item = data.results?.[0]
+    if (!item) return DEFAULT_CONFIG
+
+    const n = (key: string, fallback: number): number =>
+      typeof item[key] === 'number' ? (item[key] as number) : fallback
+    const s = (key: string, fallback: string): string =>
+      typeof item[key] === 'string' ? (item[key] as string) : fallback
+
+    return {
+      title:           s('title',           DEFAULT_CONFIG.title),
+      scenario_label:  s('scenario_label',  DEFAULT_CONFIG.scenario_label),
+      subtitle:        s('subtitle',        DEFAULT_CONFIG.subtitle),
+      bounds_sw_lat:   n('bounds_sw_lat',   DEFAULT_CONFIG.bounds_sw_lat),
+      bounds_sw_lng:   n('bounds_sw_lng',   DEFAULT_CONFIG.bounds_sw_lng),
+      bounds_ne_lat:   n('bounds_ne_lat',   DEFAULT_CONFIG.bounds_ne_lat),
+      bounds_ne_lng:   n('bounds_ne_lng',   DEFAULT_CONFIG.bounds_ne_lng),
+      area_center_lat: n('area_center_lat', DEFAULT_CONFIG.area_center_lat),
+      area_center_lng: n('area_center_lng', DEFAULT_CONFIG.area_center_lng),
+      area_radius_km:  n('area_radius_km',  DEFAULT_CONFIG.area_radius_km),
+    }
+  } catch (err) {
+    console.warn('[CMS] fetchDeploymentConfig failed — using defaults', err)
+    return DEFAULT_CONFIG
   }
 }
 
