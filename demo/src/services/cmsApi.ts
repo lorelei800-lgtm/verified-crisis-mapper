@@ -175,11 +175,18 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
  * Upload a photo file as a CMS asset.
  * Returns the asset object (including .url) on success, null on failure.
  */
+/** Split "workspace/project" alias stored in VITE_CMS_PROJECT */
+function splitProject(): [string, string] {
+  const parts = (CMS.project ?? '').split('/')
+  return [parts[0] ?? '', parts[1] ?? '']
+}
+
 export async function uploadAsset(file: File): Promise<CmsAsset | null> {
   if (!CMS.writable) return null
 
-  // Integration API asset endpoint
-  const url = `${CMS.baseUrl}/api/projects/${CMS.project}/assets`
+  // Integration API: /api/{workspace}/projects/{project}/assets
+  const [ws, proj] = splitProject()
+  const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/assets`
   const body = new FormData()
   body.append('file', file)
   body.append('name', file.name || 'damage-photo.jpg')
@@ -212,8 +219,9 @@ export async function createReportItem(
 ): Promise<string | null> {
   if (!CMS.writable) return null
 
-  // Integration API item create endpoint
-  const url = `${CMS.baseUrl}/api/projects/${CMS.project}/models/${CMS.model}/items`
+  // Integration API: /api/{workspace}/projects/{project}/models/{model}/items
+  const [ws, proj] = splitProject()
+  const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items`
 
   // Re:Earth CMS write API expects an array of { key, value } field objects
   const fields: Array<{ key: string; value: unknown }> = [
