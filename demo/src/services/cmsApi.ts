@@ -253,12 +253,22 @@ export async function createReportItem(
         Authorization:  `Bearer ${CMS.token}`,
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(15000),   // 15 秒でタイムアウト
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ fields }),
     })
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-    const data = await res.json() as { id: string }
-    return data.id
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '')
+      console.warn(`[CMS] createReportItem ${res.status}:`, errBody)
+      throw new Error(`${res.status} ${res.statusText}`)
+    }
+    // 204 No Content = created with no body; parse only if body exists
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return 'created'
+    }
+    const text = await res.text()
+    if (!text) return 'created'
+    const data = JSON.parse(text) as { id?: string }
+    return data.id ?? 'created'
   } catch (err) {
     console.warn('[CMS] createReportItem failed', err)
     return null
