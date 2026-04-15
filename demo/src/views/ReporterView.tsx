@@ -50,17 +50,30 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
 
   const handleGps = () => {
     setGpsStatus('acquiring')
-    setTimeout(() => {
-      // Simulate GPS coordinates near the configured area centre (±0.02°)
-      const lat = config.area_center_lat + (Math.random() - 0.5) * 0.02
-      const lng = config.area_center_lng + (Math.random() - 0.5) * 0.02
-      const within = isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
-      setGpsLat(lat)
-      setGpsLng(lng)
-      setInArea(within)
-      setGpsAccuracy(12)
-      setGpsStatus('acquired')
-    }, 1500)
+
+    if (!navigator.geolocation) {
+      setGpsStatus('error')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat      = position.coords.latitude
+        const lng      = position.coords.longitude
+        const accuracy = Math.round(position.coords.accuracy)
+        const within   = isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
+        setGpsLat(lat)
+        setGpsLng(lng)
+        setInArea(within)
+        setGpsAccuracy(accuracy)
+        setGpsStatus('acquired')
+      },
+      (err) => {
+        console.warn('[GPS]', err.message)
+        setGpsStatus('error')
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
