@@ -178,8 +178,8 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
 export async function uploadAsset(file: File): Promise<CmsAsset | null> {
   if (!CMS.writable) return null
 
-  // Assets endpoint: /api/p/{project}/assets
-  const url = `${CMS.baseUrl}/api/p/${CMS.project}/assets`
+  // Integration API asset endpoint
+  const url = `${CMS.baseUrl}/api/projects/${CMS.project}/assets`
   const body = new FormData()
   body.append('file', file)
   body.append('name', file.name || 'damage-photo.jpg')
@@ -188,6 +188,7 @@ export async function uploadAsset(file: File): Promise<CmsAsset | null> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${CMS.token}` },
+      signal: AbortSignal.timeout(15000),   // 15 秒でタイムアウト
       body,
     })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
@@ -211,8 +212,8 @@ export async function createReportItem(
 ): Promise<string | null> {
   if (!CMS.writable) return null
 
-  // Item create endpoint: POST /api/p/{project}/{model}
-  const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}`
+  // Integration API item create endpoint
+  const url = `${CMS.baseUrl}/api/projects/${CMS.project}/models/${CMS.model}/items`
 
   // Re:Earth CMS write API expects an array of { key, value } field objects
   const fields: Array<{ key: string; value: unknown }> = [
@@ -244,6 +245,7 @@ export async function createReportItem(
         Authorization:  `Bearer ${CMS.token}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(15000),   // 15 秒でタイムアウト
       body: JSON.stringify({ fields }),
     })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
