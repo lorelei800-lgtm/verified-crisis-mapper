@@ -26,21 +26,33 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
   const [cmsReports, setCmsReports] = useState<DamageReport[] | null>(null)
   const [cmsError,   setCmsError]   = useState<string | null>(null)
 
-  useEffect(() => {
+  const refreshCms = () => {
     if (!CMS.enabled) return
+    setCmsError(null)
     fetchCmsReports()
       .then(reports => setCmsReports(reports))
       .catch(() => { setCmsError('Could not load CMS data'); setCmsReports([]) })
-  }, [])
+  }
 
+  // Initial fetch
+  useEffect(() => { refreshCms() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-refresh every 30 seconds to pick up reports from other devices
+  useEffect(() => {
+    if (!CMS.enabled) return
+    const id = setInterval(refreshCms, 30_000)
+    return () => clearInterval(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Also refresh when this session submits a new report
   const prevSubmittedCount = useRef(0)
   useEffect(() => {
     if (!CMS.enabled) return
     if (submittedReports.length > prevSubmittedCount.current) {
       prevSubmittedCount.current = submittedReports.length
-      fetchCmsReports().then(reports => setCmsReports(reports)).catch(() => {})
+      setTimeout(refreshCms, 2000)   // short delay to let CMS index the new item
     }
-  }, [submittedReports.length])
+  }, [submittedReports.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const baseReports = useMemo((): DamageReport[] => {
     if (CMS.enabled && cmsReports !== null) return cmsReports
@@ -131,7 +143,17 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
         <div className="p-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">{config.title}</h2>
-            <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+            <div className="flex items-center gap-1.5">
+              <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+              {CMS.enabled && (
+                <button onClick={refreshCms} title="Refresh"
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           {submittedReports.length > 0 && (
             <div className="mb-2 text-xs bg-green-50 border border-green-200 rounded px-2 py-1 text-green-700">
@@ -206,7 +228,17 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
         <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md p-2.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-700">{config.title}</span>
-            <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+            <div className="flex items-center gap-1.5">
+              <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+              {CMS.enabled && (
+                <button onClick={refreshCms} title="Refresh"
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-1.5 mb-2">
             {(['green','amber','red'] as TrustTier[]).map(t => (
