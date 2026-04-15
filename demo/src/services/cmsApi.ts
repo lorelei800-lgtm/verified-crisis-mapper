@@ -113,10 +113,8 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}`
 
   try {
-    const headers: HeadersInit = {}
-    if (CMS.token) headers['Authorization'] = `Bearer ${CMS.token}`
-
-    const res = await fetch(url, { headers })
+    // Public read API — no Authorization header needed (and rejected if sent)
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: CmsListResponse = await res.json()
@@ -140,10 +138,8 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/deployment-config`
 
   try {
-    const headers: HeadersInit = {}
-    if (CMS.token) headers['Authorization'] = `Bearer ${CMS.token}`
-
-    const res = await fetch(url, { headers })
+    // Public read API — no Authorization header needed (and rejected if sent)
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: { results: Array<Record<string, unknown>> } = await res.json()
