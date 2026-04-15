@@ -29,15 +29,22 @@ export function calculateDemoTrustScore(params: {
   gpsAccuracy: number   // metres
   channel: 'pwa' | 'browser' | 'whatsapp'
   isInArea?: boolean    // false → geospatial score forced to 0
+  hasC2PA?: boolean     // C2PA content credentials present → +12 bonus
+  aiAuthentic?: boolean // false → AI flagged as suspicious → -8 penalty
 }): TrustScoreBreakdown {
-  const { hasPhoto, hasGps, gpsAccuracy, channel, isInArea = true } = params
+  const {
+    hasPhoto, hasGps, gpsAccuracy, channel,
+    isInArea = true, hasC2PA = false, aiAuthentic = true,
+  } = params
 
   // Image Integrity (0–40)
   let imageIntegrity = 0
   if (hasPhoto) {
-    imageIntegrity = 28  // base: photo present, AI check passes (simulated)
-    if (channel !== 'whatsapp') imageIntegrity += 6  // EXIF preserved
-    if (gpsAccuracy < 20) imageIntegrity += 4         // GPS accuracy bonus
+    imageIntegrity = 20                                  // base: photo present
+    if (hasC2PA)                  imageIntegrity += 12  // C2PA content credentials verified
+    else if (channel !== 'whatsapp') imageIntegrity += 6 // no C2PA but EXIF metadata intact
+    if (gpsAccuracy < 20)         imageIntegrity += 4   // high-accuracy GPS bonus
+    if (!aiAuthentic)             imageIntegrity = Math.max(0, imageIntegrity - 8) // AI flagged
   }
 
   // Geospatial Consistency (0–30): 0 when GPS coords are outside the allowed area

@@ -13,39 +13,43 @@ interface Props {
 }
 
 type FormStep = 'form' | 'submitting' | 'result'
-type SubmitPhase = 'scoring' | 'uploading' | 'saving' | 'done'
+type SubmitPhase = 'scoring' | 'analyzing' | 'uploading' | 'saving' | 'done'
 
 export default function ReporterView({ config, onViewDashboard, onNewReport }: Props) {
   const [step, setStep]               = useState<FormStep>('form')
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('scoring')
 
   // Form state
-  const [photoFile, setPhotoFile]     = useState<File | null>(null)
+  const [photoFile, setPhotoFile]       = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [damageLevel, setDamageLevel] = useState<DamageLevel | ''>('')
-  const [infraType, setInfraType]     = useState<InfraType | ''>('')
-  const [landmark, setLandmark]       = useState('')
-  const [channel]                     = useState<SubmissionChannel>('pwa')
-  const [gpsStatus, setGpsStatus]     = useState<'idle' | 'acquiring' | 'acquired' | 'error'>('idle')
-  const [gpsAccuracy, setGpsAccuracy] = useState<number>(50)
-  // Simulated GPS coords (populated when GPS is acquired)
-  const [gpsLat, setGpsLat]           = useState<number>(0)
-  const [gpsLng, setGpsLng]           = useState<number>(0)
-  const [inArea, setInArea]           = useState<boolean>(true)
+  const [photoSource, setPhotoSource]   = useState<'camera' | 'library' | null>(null)
+  const [damageLevel, setDamageLevel]   = useState<DamageLevel | ''>('')
+  const [infraType, setInfraType]       = useState<InfraType | ''>('')
+  const [landmark, setLandmark]         = useState('')
+  const [channel]                       = useState<SubmissionChannel>('pwa')
+  const [gpsStatus, setGpsStatus]       = useState<'idle' | 'acquiring' | 'acquired' | 'error'>('idle')
+  const [gpsAccuracy, setGpsAccuracy]   = useState<number>(50)
+  const [gpsLat, setGpsLat]             = useState<number>(0)
+  const [gpsLng, setGpsLng]             = useState<number>(0)
+  const [inArea, setInArea]             = useState<boolean>(true)
+  const [geocoding, setGeocoding]       = useState(false)
 
   // Result state
-  const [trustResult, setTrustResult] = useState<ReturnType<typeof calculateDemoTrustScore> | null>(null)
-  const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null)  // CMS asset URL or blob fallback
-  const [cmsError, setCmsError]       = useState<string | null>(null)
+  const [trustResult, setTrustResult]     = useState<ReturnType<typeof calculateDemoTrustScore> | null>(null)
+  const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null)
+  const [resultHasC2PA, setResultHasC2PA] = useState(false)
+  const [aiResult, setAiResult]           = useState<'authentic' | 'suspicious' | null>(null)
+  const [cmsError, setCmsError]           = useState<string | null>(null)
 
   const fileRef    = useRef<HTMLInputElement>(null)
   const cameraRef  = useRef<HTMLInputElement>(null)
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>, source: 'camera' | 'library') => {
     const file = e.target.files?.[0]
     if (!file) return
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
+    setPhotoSource(source)
   }
 
   const handleGps = () => {
@@ -57,7 +61,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const lat      = position.coords.latitude
         const lng      = position.coords.longitude
         const accuracy = Math.round(position.coords.accuracy)
@@ -67,6 +71,23 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
         setInArea(within)
         setGpsAccuracy(accuracy)
         setGpsStatus('acquired')
+
+        // Reverse geocoding — auto-fill landmark if empty
+        try {
+          setGeocoding(true)
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+            { headers: { 'User-Agent': 'VerifiedCrisisMapper/1.0' } }
+          )
+          const data = await res.json()
+          const addr = data.address ?? {}
+          const name = addr.road ?? addr.suburb ?? addr.city_district ?? addr.town ?? addr.city ?? data.display_name?.split(',')[0] ?? ''
+          if (name) setLandmark(name)
+        } catch {
+          // geocoding failure is non-critical
+        } finally {
+          setGeocoding(false)
+        }
       },
       (err) => {
         console.warn('[GPS]', err.message)
@@ -84,17 +105,27 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     setSubmitPhase('scoring')
     setCmsError(null)
 
-    // 1. Calculate trust score (simulated)
+    // 1. Determine C2PA: camera-taken photos carry simulated C2PA credentials
+    const c2pa = photoSource === 'camera' && !!photoFile
+
+    // 2. Calculate trust score
     const score = calculateDemoTrustScore({
       hasPhoto:    !!photoPreview,
       hasGps:      gpsStatus === 'acquired',
       gpsAccuracy,
       channel,
       isInArea:    gpsStatus === 'acquired' ? inArea : true,
+      hasC2PA:     c2pa,
+      aiAuthentic: true,
     })
 
-    // Small delay so the user sees "Calculating Trust Score…" text
     await sleep(800)
+
+    // 3. AI image analysis step (simulated)
+    setSubmitPhase('analyzing')
+    await sleep(1200)
+    setResultHasC2PA(c2pa)
+    setAiResult('authentic')
 
     // 2. Upload photo to CMS (if CMS is writable and a photo was taken)
     let imageUrl: string | undefined
@@ -132,7 +163,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       trustScore: score,
       tier:       getTier(score.total),
       h3Cell:     '8865b1b6dffffff',
-      hasC2PA:    false,
+      hasC2PA:    c2pa,
       imageUrl,
     }
 
@@ -156,6 +187,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     setStep('form')
     setPhotoFile(null)
     setPhotoPreview(null)
+    setPhotoSource(null)
     setDamageLevel('')
     setInfraType('')
     setLandmark('')
@@ -163,8 +195,11 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     setGpsLat(0)
     setGpsLng(0)
     setInArea(true)
+    setGeocoding(false)
     setTrustResult(null)
     setFinalImageUrl(null)
+    setResultHasC2PA(false)
+    setAiResult(null)
     setCmsError(null)
     setSubmitPhase('scoring')
   }
@@ -173,9 +208,10 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   if (step === 'submitting') {
     const phases: Record<SubmitPhase, string[]> = {
       scoring:   ['Checking image integrity…', 'Cross-referencing satellite data…', 'Calculating Trust Score…'],
-      uploading: ['Trust Score calculated ✓', 'Uploading photo to CMS…'],
-      saving:    ['Trust Score calculated ✓', 'Photo uploaded ✓', 'Saving report to CMS…'],
-      done:      ['Trust Score calculated ✓', 'Photo uploaded ✓', 'Report saved ✓'],
+      analyzing: ['Trust Score calculated ✓', 'Running AI authenticity scan…', 'Verifying C2PA credentials…'],
+      uploading: ['Trust Score calculated ✓', 'AI analysis complete ✓', 'Uploading photo to CMS…'],
+      saving:    ['Trust Score calculated ✓', 'AI analysis complete ✓', 'Photo uploaded ✓', 'Saving report to CMS…'],
+      done:      ['Trust Score calculated ✓', 'AI analysis complete ✓', 'Photo uploaded ✓', 'Report saved ✓'],
     }
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
@@ -219,6 +255,22 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
             <ScoreBar label="Geospatial"       value={trustResult.geospatial}     max={30} color={colors.hex} />
             <ScoreBar label="Cross-Report"     value={trustResult.crossReport}    max={20} color={colors.hex} />
             <ScoreBar label="Metadata"         value={trustResult.metadata}       max={10} color={colors.hex} />
+          </div>
+
+          {/* C2PA + AI badges */}
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+            <div className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg ${resultHasC2PA ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
+              <span>{resultHasC2PA ? '🔏' : '○'}</span>
+              <span className="font-medium">C2PA Content Credentials:</span>
+              <span>{resultHasC2PA ? 'Verified ✓' : 'Not present'}</span>
+            </div>
+            {aiResult && (
+              <div className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg ${aiResult === 'authentic' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                <span>{aiResult === 'authentic' ? '🤖' : '⚠'}</span>
+                <span className="font-medium">AI Analysis:</span>
+                <span>{aiResult === 'authentic' ? 'Authentic content detected ✓' : 'Flagged for review'}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -320,10 +372,10 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
           )}
           {/* Camera input — forces camera on mobile */}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment"
-            className="hidden" onChange={handlePhoto} />
+            className="hidden" onChange={e => handlePhoto(e, 'camera')} />
           {/* Library input — shows photo picker */}
           <input ref={fileRef} type="file" accept="image/*"
-            className="hidden" onChange={handlePhoto} />
+            className="hidden" onChange={e => handlePhoto(e, 'library')} />
         </section>
 
         {/* Step 2 — Damage Level */}
@@ -380,8 +432,9 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
             }`}>
             {gpsStatus === 'idle'      && '📍 Auto-capture GPS location'}
             {gpsStatus === 'acquiring' && '⟳ Acquiring GPS…'}
-            {gpsStatus === 'acquired'  && `✓ GPS captured (±${gpsAccuracy}m)`}
-            {gpsStatus === 'error'     && '⚠ GPS unavailable'}
+            {gpsStatus === 'acquired'  && !geocoding && `✓ GPS captured (±${gpsAccuracy}m)`}
+            {gpsStatus === 'acquired'  && geocoding  && `✓ GPS captured (±${gpsAccuracy}m) · Looking up address…`}
+            {gpsStatus === 'error'     && '⚠ GPS unavailable — enter landmark manually'}
           </button>
           <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)}
             placeholder="Landmark / street name (backup if no GPS)"
