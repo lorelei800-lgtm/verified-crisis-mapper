@@ -293,25 +293,35 @@ export async function createReportItem(
     if (!itemId) {
       console.info('[CMS] no ID in response — fetching newest item to publish')
       await new Promise(r => setTimeout(r, 800))
-      const listRes = await fetch(`${url}?perPage=1`, {
+      // Try multiple sort parameters to get newest item first
+      const listUrl = `${url}?perPage=5&sort=createdAt&direction=desc`
+      const listRes = await fetch(listUrl, {
         headers: { Authorization: `Bearer ${CMS.token}` },
         signal: AbortSignal.timeout(10000),
       })
       if (listRes.ok) {
-        const listData = await listRes.json() as { items?: {id:string}[], results?: {id:string}[], totalCount?: number }
-        console.info('[CMS] list response keys:', Object.keys(listData), 'totalCount:', listData.totalCount)
-        itemId = listData.items?.[0]?.id ?? listData.results?.[0]?.id ?? null
+        const listData = await listRes.json() as {
+          items?:   { id: string; status?: string; createdAt?: string }[]
+          results?: { id: string; status?: string; createdAt?: string }[]
+          totalCount?: number
+        }
+        const allItems = [...(listData.items ?? []), ...(listData.results ?? [])]
+        console.info('[CMS] list response keys:', Object.keys(listData), 'totalCount:', listData.totalCount, 'items:', allItems.length)
+        // Prefer first draft item; fall back to newest regardless of status
+        const draftItem = allItems.find(i => i.status !== 'public')
+        itemId = draftItem?.id ?? allItems[0]?.id ?? null
+        console.info('[CMS] selected item to publish:', itemId, 'status:', draftItem?.status)
       }
     }
 
     console.info('[CMS] itemId to publish:', itemId)
 
-    // Step 2: Publish via PATCH — try both URL patterns
+    // Step 2: Publish via PATCH — include fields:[] which some CMS versions require
     if (itemId) {
-      // Pattern A: .../models/{model}/items/{id}
-      const publishUrlA = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
-      // Pattern B: .../items/{id}  (no model segment)
-      const publishUrlB = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}`
+      // Pattern A: no model segment (most common for Re:Earth CMS)
+      const publishUrlA = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}`
+      // Pattern B: with model segment
+      const publishUrlB = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
 
       for (const pUrl of [publishUrlA, publishUrlB]) {
         const pubRes = await fetch(pUrl, {
@@ -321,7 +331,7 @@ export async function createReportItem(
             'Content-Type': 'application/json',
           },
           signal: AbortSignal.timeout(10000),
-          body: JSON.stringify({ status: 'public' }),
+          body: JSON.stringify({ status: 'public', fields: [] }),
         })
         console.info(`[CMS] PATCH ${pUrl.split('/api/')[1]} → ${pubRes.status}`)
         if (pubRes.ok) {
@@ -329,7 +339,7 @@ export async function createReportItem(
           break
         }
         const errBody = await pubRes.text().catch(() => '')
-        console.warn(`[CMS] publish attempt failed ${pubRes.status}:`, errBody.slice(0, 100))
+        console.warn(`[CMS] publish attempt failed ${pubRes.status}:`, errBody.slice(0, 150))
       }
     }
 

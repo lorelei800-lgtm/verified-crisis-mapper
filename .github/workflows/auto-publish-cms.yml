@@ -1,0 +1,58 @@
+name: Auto-publish CMS draft items
+
+# Runs every 5 minutes to ensure any draft items submitted via the app
+# are automatically published and visible to all devices.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:   # allow manual trigger from GitHub Actions UI
+
+jobs:
+  publish-drafts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish all draft items in Re:Earth CMS
+        env:
+          CMS_BASE_URL: ${{ secrets.VITE_CMS_BASE_URL }}
+          CMS_PROJECT:  ${{ secrets.VITE_CMS_PROJECT }}
+          CMS_MODEL:    ${{ secrets.VITE_CMS_MODEL }}
+          CMS_TOKEN:    ${{ secrets.VITE_CMS_TOKEN }}
+        run: |
+          BASE_URL="${CMS_BASE_URL:-https://api.cms.reearth.io}"
+          WORKSPACE=$(echo "$CMS_PROJECT" | cut -d'/' -f1)
+          PROJECT=$(echo "$CMS_PROJECT"  | cut -d'/' -f2)
+
+          echo "=== Fetching items from Integration API ==="
+          RESPONSE=$(curl -sf \
+            -H "Authorization: Bearer $CMS_TOKEN" \
+            "$BASE_URL/api/$WORKSPACE/projects/$PROJECT/models/$CMS_MODEL/items?perPage=100" \
+            2>&1)
+
+          echo "Raw response (first 800 chars):"
+          echo "$RESPONSE" | head -c 800
+
+          # Support both "items" and "results" response keys
+          IDS_FROM_ITEMS=$(echo "$RESPONSE"  | jq -r '.items[]?  | .id' 2>/dev/null || true)
+          IDS_FROM_RESULTS=$(echo "$RESPONSE" | jq -r '.results[]? | .id' 2>/dev/null || true)
+          ALL_IDS="$IDS_FROM_ITEMS $IDS_FROM_RESULTS"
+
+          if [ -z "$(echo $ALL_IDS | tr -d ' ')" ]; then
+            echo "No items found (or jq parse failed)"
+            exit 0
+          fi
+
+          echo ""
+          echo "=== Publishing all items (idempotent — already-public items are unaffected) ==="
+
+          for ID in $ALL_IDS; do
+            [ -z "$ID" ] && continue
+            RESULT=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+              -H "Authorization: Bearer $CMS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"status":"public","fields":[]}' \
+              "$BASE_URL/api/$WORKSPACE/projects/$PROJECT/items/$ID")
+            echo "  PATCH items/$ID → HTTP $RESULT"
+          done
+
+          echo ""
+          echo "=== Done ==="
