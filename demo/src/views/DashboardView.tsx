@@ -10,9 +10,10 @@ import { getTierLabel } from '../utils/trustScore'
 interface Props {
   config: DeploymentConfig
   submittedReports?: DamageReport[]
+  newReportIds?: Set<string>
 }
 
-export default function DashboardView({ config, submittedReports = [] }: Props) {
+export default function DashboardView({ config, submittedReports = [], newReportIds = new Set() }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<maplibregl.Map | null>(null)
   const markersRef   = useRef<maplibregl.Marker[]>([])
@@ -125,7 +126,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
     markersRef.current = []
     filteredReports.forEach(report => {
       const color = tierColors[report.tier].hex
-      const isNew = submittedReports.some(r => r.id === report.id)
+      const isNew = newReportIds.has(report.id)
       const el = document.createElement('div')
       el.style.cssText = `width:${isNew?'26px':'22px'};height:${isNew?'26px':'22px'};border-radius:50%;background:${color};border:${isNew?'3px':'2.5px'} solid white;box-shadow:${isNew?`0 0 0 2px ${color},0 4px 8px rgba(0,0,0,0.4)`:'0 2px 6px rgba(0,0,0,0.35)'};cursor:pointer;`
       el.addEventListener('mouseenter', () => { el.style.boxShadow = `0 0 0 3px white,0 0 0 6px ${color}` })
@@ -202,7 +203,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
               <div className="flex items-start gap-2"><div className="w-3 h-3 rounded-full bg-gray-200 mt-0.5 shrink-0"/><div className="flex-1 space-y-1.5"><div className="h-3 bg-gray-200 rounded w-3/4"/><div className="h-2.5 bg-gray-100 rounded w-1/2"/></div></div>
             </div>
           )) : filteredReports.map(report => {
-            const isNew = submittedReports.some(r => r.id === report.id)
+            const isNew = newReportIds.has(report.id)
             return (
               <button key={report.id} onClick={() => { setSelectedReport(report); mapRef.current?.flyTo({center:[report.lng,report.lat],zoom:14}) }}
                 className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedReport?.id===report.id?'bg-blue-50':isNew?'bg-green-50':''}`}>
@@ -327,7 +328,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
             {/* Scrollable list */}
             <div className="bg-white max-h-60 overflow-y-auto">
               {filteredReports.map(report => {
-                const isNew = submittedReports.some(r => r.id === report.id)
+                const isNew = newReportIds.has(report.id)
                 return (
                   <button key={report.id}
                     onClick={() => { setSelectedReport(report); setMobileListOpen(false); mapRef.current?.flyTo({center:[report.lng,report.lat],zoom:14}) }}

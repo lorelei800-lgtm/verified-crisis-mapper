@@ -28,6 +28,8 @@ export default function App() {
   const [submittedReports, setSubmittedReports] = useState<DamageReport[]>(loadStoredReports)
   const [config, setConfig] = useState<DeploymentConfig>(DEFAULT_CONFIG)
   const [unseenCount, setUnseenCount] = useState(0)
+  // IDs submitted in THIS browser session only — cleared on reload, used for ★ New label
+  const [newReportIds, setNewReportIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchDeploymentConfig().then(setConfig)
@@ -40,6 +42,7 @@ export default function App() {
 
   const handleNewReport = (report: DamageReport) => {
     setSubmittedReports(prev => [report, ...prev])
+    setNewReportIds(prev => new Set([...prev, report.id]))
     setUnseenCount(prev => prev + 1)
   }
 
@@ -114,7 +117,7 @@ export default function App() {
             onNewReport={handleNewReport}
           />
         ) : (
-          <DashboardView config={config} submittedReports={submittedReports} />
+          <DashboardView config={config} submittedReports={submittedReports} newReportIds={newReportIds} />
         )}
       </main>
 
