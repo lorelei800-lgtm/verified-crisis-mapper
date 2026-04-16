@@ -21,6 +21,7 @@ export interface TrustScoreBreakdown {
 
 export interface DamageReport {
   id: string
+  cmsId?: string      // original CMS UUID — used for write-back operations
   lat: number
   lng: number
   damageLevel: DamageLevel

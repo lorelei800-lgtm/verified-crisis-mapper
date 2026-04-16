@@ -12,7 +12,7 @@
  */
 
 import { CMS } from '../config'
-import type { DamageReport, DamageLevel, InfraType, SubmissionChannel, TrustTier, DeploymentConfig } from '../types'
+import type { DamageReport, DamageLevel, InfraType, SubmissionChannel, TrustTier, DeploymentConfig, ReviewStatus, ReviewMap } from '../types'
 import { getTier } from '../utils/trustScore'
 
 // ─── Deployment defaults ─────────────────────────────────────────────────────
@@ -64,6 +64,7 @@ interface CmsItem {
   trust_score_cross?: number
   trust_score_meta?: number
   tier?: string
+  review_status?: string  // 'approved' | 'rejected' | '' — written by admin
 }
 
 interface CmsListResponse {
@@ -81,8 +82,8 @@ function cmsItemToReport(item: CmsItem): DamageReport {
   const metadata       = item.trust_score_meta   ?? 0
 
   return {
-    // Use the last 8 hex chars of the CMS UUID as a short display ID
     id:         `CMS-${item.id.replace(/-/g, '').slice(-6).toUpperCase()}`,
+    cmsId:      item.id,   // keep original UUID for write-back
     lat:        item.lat ?? 0,
     lng:        item.lng ?? 0,
     damageLevel:(item.damage_level as DamageLevel)     ?? 'minimal',
@@ -103,27 +104,36 @@ function cmsItemToReport(item: CmsItem): DamageReport {
 
 /**
  * Fetch all damage reports from Re:Earth CMS.
- * Returns [] if CMS is not configured or the request fails.
+ * Also returns a ReviewMap extracted from the `review_status` field of each item.
+ * Returns { reports: [], reviewMap: {} } if CMS is not configured or the request fails.
  */
-export async function fetchCmsReports(): Promise<DamageReport[]> {
-  if (!CMS.enabled) return []
+export async function fetchCmsReports(): Promise<{ reports: DamageReport[]; reviewMap: ReviewMap }> {
+  if (!CMS.enabled) return { reports: [], reviewMap: {} }
 
-  // Re:Earth CMS public API: /api/p/{project}/{model}
-  // e.g. https://api.cms.reearth.io/api/p/verified-crisis-mapper/Demo-v1/damage-report
-  // perPage=100 avoids the default 20-item page limit (seeded data alone is 28 items)
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}?perPage=100`
 
   try {
-    // Public read API — no Authorization header needed (and rejected if sent)
     const res = await fetch(url)
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: CmsListResponse = await res.json()
     console.info(`[CMS] fetchReports: totalCount=${data.totalCount}, returned=${data.results.length}`)
-    return data.results.map(cmsItemToReport)
+
+    const reports = data.results.map(cmsItemToReport)
+
+    // Build a ReviewMap from the review_status field stored in each CMS item
+    const reviewMap: ReviewMap = {}
+    data.results.forEach(item => {
+      if (item.review_status === 'approved' || item.review_status === 'rejected') {
+        const displayId = `CMS-${item.id.replace(/-/g, '').slice(-6).toUpperCase()}`
+        reviewMap[displayId] = item.review_status as ReviewStatus
+      }
+    })
+
+    return { reports, reviewMap }
   } catch (err) {
     console.warn('[CMS] fetchReports failed — using mock data', err)
-    return []
+    return { reports: [], reviewMap: {} }
   }
 }
 
@@ -181,6 +191,38 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
 function splitProject(): [string, string] {
   const parts = (CMS.project ?? '').split('/')
   return [parts[0] ?? '', parts[1] ?? '']
+}
+
+/**
+ * Write the admin review status back to a CMS item.
+ * Uses the Integration API (requires CMS.token).
+ */
+export async function updateReviewStatus(
+  cmsItemId: string,
+  status: ReviewStatus | null,
+): Promise<boolean> {
+  if (!CMS.writable) {
+    console.warn('[CMS] updateReviewStatus: CMS not writable (no token)')
+    return false
+  }
+  const [ws, proj] = splitProject()
+  const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${cmsItemId}`
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization:  `Bearer ${CMS.token}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({ fields: [{ key: 'review_status', value: status ?? '' }] }),
+    })
+    console.info(`[CMS] updateReviewStatus ${cmsItemId} → ${status} : HTTP ${res.status}`)
+    return res.ok
+  } catch (err) {
+    console.warn('[CMS] updateReviewStatus failed', err)
+    return false
+  }
 }
 
 export async function uploadAsset(file: File): Promise<CmsAsset | null> {

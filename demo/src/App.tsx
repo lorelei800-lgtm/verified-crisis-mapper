@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import type { DamageReport, DeploymentConfig, ReviewMap, ReviewStatus } from './types'
-import { fetchDeploymentConfig, fetchCmsReports, DEFAULT_CONFIG } from './services/cmsApi'
+import { fetchDeploymentConfig, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG } from './services/cmsApi'
 import { CMS } from './config'
 import { mockReports } from './data/mockReports'
 import ReporterView from './views/ReporterView'
@@ -57,12 +57,10 @@ export default function App() {
   }, [])
 
   // Fetch CMS reports at App level so AdminView always has data
-  useEffect(() => {
-    if (!CMS.enabled) return
-    fetchCmsReports().then(setCmsReports)
-    const id = setInterval(() => fetchCmsReports().then(reports => {
+  const doFetch = (isInitial = false) => {
+    fetchCmsReports().then(({ reports, reviewMap: cmsReviewMap }) => {
       setCmsReports(prev => {
-        if (reports.length > prev.length) {
+        if (!isInitial && reports.length > prev.length) {
           fireNotification(
             `${reports.length - prev.length} new report(s) received`,
             'Open the Admin panel to review and approve.'
@@ -70,7 +68,17 @@ export default function App() {
         }
         return reports
       })
-    }), 30_000)
+      // CMS review_status is the source of truth — merge into local reviewMap
+      if (Object.keys(cmsReviewMap).length > 0) {
+        setReviewMap(prev => ({ ...prev, ...cmsReviewMap }))
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (!CMS.enabled) return
+    doFetch(true)
+    const id = setInterval(() => doFetch(), 30_000)
     return () => clearInterval(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -117,7 +125,15 @@ export default function App() {
   }
 
   const handleReview = (id: string, status: ReviewStatus) => {
+    // Optimistic local update
     setReviewMap(prev => ({ ...prev, [id]: status }))
+    // Write back to CMS so other devices see the change
+    const report = allKnownReports.find(r => r.id === id)
+    if (report?.cmsId) {
+      updateReviewStatus(report.cmsId, status)
+    } else {
+      console.warn('[Admin] no cmsId for report', id, '— review not synced to CMS')
+    }
   }
 
   return (

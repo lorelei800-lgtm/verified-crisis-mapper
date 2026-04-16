@@ -37,7 +37,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
     setCmsError(null)
     setIsRefreshing(true)
     fetchCmsReports()
-      .then(reports => setCmsReports(reports))
+      .then(({ reports }) => setCmsReports(reports))
       .catch(() => { setCmsError('Could not load CMS data'); setCmsReports([]) })
       .finally(() => setIsRefreshing(false))
   }
