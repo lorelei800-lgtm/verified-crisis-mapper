@@ -360,37 +360,22 @@ export async function createReportItem(
 
     console.info('[CMS] itemId to publish:', itemId)
 
-    // Step 2: Publish the item.
-    // Re:Earth CMS has a dedicated publish endpoint separate from field updates.
-    // Try in order until one succeeds.
+    // Step 2: Publish via POST .../models/{model}/items/{id}/publish
+    // (confirmed working endpoint for Re:Earth CMS Integration API)
     if (itemId) {
-      const attempts = [
-        // A: dedicated publish sub-resource (most likely correct for Re:Earth CMS)
-        { method: 'POST', url: `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}/publish`, body: '{}' },
-        // B: same but via models path
-        { method: 'POST', url: `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}/publish`, body: '{}' },
-        // C: PATCH status only (no fields — some versions accept this)
-        { method: 'PATCH', url: `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}`, body: JSON.stringify({ status: 'public' }) },
-        // D: PATCH via models path with fields (current approach — known to return 200 but not publish)
-        { method: 'PATCH', url: `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`, body: JSON.stringify({ status: 'public', fields }) },
-      ]
-
-      for (const { method, url, body } of attempts) {
-        const pubRes = await fetch(url, {
-          method,
-          headers: { Authorization: `Bearer ${CMS.token}`, 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(10000),
-          body,
-        })
-        const short = url.split('/api/')[1]
-        console.info(`[CMS] ${method} ${short} → ${pubRes.status}`)
-        if (pubRes.ok) {
-          const txt = await pubRes.text().catch(() => '')
-          console.info('[CMS] publish success ✓', txt.slice(0, 100))
-          break
-        }
+      const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}/publish`
+      const pubRes = await fetch(publishUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${CMS.token}`, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+        body: '{}',
+      })
+      console.info(`[CMS] publish → ${pubRes.status}`)
+      if (pubRes.ok) {
+        console.info('[CMS] item published ✓', itemId)
+      } else {
         const errTxt = await pubRes.text().catch(() => '')
-        console.warn(`[CMS] publish attempt failed ${pubRes.status}:`, errTxt.slice(0, 150))
+        console.warn(`[CMS] publish failed ${pubRes.status}:`, errTxt.slice(0, 200))
       }
     }
 
