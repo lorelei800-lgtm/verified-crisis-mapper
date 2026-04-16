@@ -57,6 +57,9 @@ export interface DeploymentConfig {
   area_radius_km:  number  // reports outside this radius get geo score = 0
 }
 
+export type ReviewStatus = 'approved' | 'rejected'
+export type ReviewMap = Record<string, ReviewStatus>
+
 export interface H3CellSummary {
   h3Index: string
   reports: DamageReport[]

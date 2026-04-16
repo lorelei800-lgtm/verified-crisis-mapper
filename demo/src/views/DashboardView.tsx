@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
 import { fetchCmsReports } from '../services/cmsApi'
 import { CMS } from '../config'
-import type { DamageReport, TrustTier, DeploymentConfig } from '../types'
+import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 import { isWithinArea } from '../utils/geo'
@@ -12,9 +12,12 @@ interface Props {
   config: DeploymentConfig
   submittedReports?: DamageReport[]
   newReportIds?: Set<string>
+  reviewMap?: ReviewMap
+  onNewCmsReports?: (count: number, reports: DamageReport[]) => void
+  onAllReportsChanged?: (reports: DamageReport[]) => void
 }
 
-export default function DashboardView({ config, submittedReports = [], newReportIds = new Set() }: Props) {
+export default function DashboardView({ config, submittedReports = [], newReportIds = new Set(), reviewMap = {}, onNewCmsReports, onAllReportsChanged }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef       = useRef<maplibregl.Map | null>(null)
   const markersRef   = useRef<maplibregl.Marker[]>([])
@@ -59,6 +62,17 @@ export default function DashboardView({ config, submittedReports = [], newReport
     }
   }, [submittedReports.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Notify parent when CMS reports increase (for admin push notifications)
+  const prevCmsCountRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!onNewCmsReports || cmsReports === null) return
+    const prev = prevCmsCountRef.current
+    if (prev !== null && cmsReports.length > prev) {
+      onNewCmsReports(cmsReports.length - prev, cmsReports)
+    }
+    prevCmsCountRef.current = cmsReports.length
+  }, [cmsReports]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const baseReports = useMemo((): DamageReport[] => {
     if (CMS.enabled && cmsReports !== null) return cmsReports
     return mockReports
@@ -69,22 +83,33 @@ export default function DashboardView({ config, submittedReports = [], newReport
     return [...submittedReports, ...baseReports.filter(r => !sessionIds.has(r.id))]
   }, [submittedReports, baseReports])
 
+  // Keep parent's allKnownReports in sync (for AdminView)
+  useEffect(() => {
+    if (onAllReportsChanged) onAllReportsChanged(allReports)
+  }, [allReports]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Exclude rejected reports from everything visible on the dashboard
+  const visibleReports = useMemo(
+    () => allReports.filter(r => reviewMap[r.id] !== 'rejected'),
+    [allReports, reviewMap]
+  )
+
   const stats = useMemo(() => ({
-    green: allReports.filter(r => r.tier === 'green').length,
-    amber: allReports.filter(r => r.tier === 'amber').length,
-    red:   allReports.filter(r => r.tier === 'red').length,
-  }), [allReports])
+    green: visibleReports.filter(r => r.tier === 'green').length,
+    amber: visibleReports.filter(r => r.tier === 'amber').length,
+    red:   visibleReports.filter(r => r.tier === 'red').length,
+  }), [visibleReports])
 
   const tierFilters = useMemo(() => [
-    { label: `All (${allReports.length})`, tier: 'all' as const },
-    { label: `Green (${stats.green})`,     tier: 'green' as const },
-    { label: `Amber (${stats.amber})`,     tier: 'amber' as const },
-    { label: `Red (${stats.red})`,         tier: 'red' as const },
-  ], [allReports.length, stats])
+    { label: `All (${visibleReports.length})`, tier: 'all' as const },
+    { label: `Green (${stats.green})`,         tier: 'green' as const },
+    { label: `Amber (${stats.amber})`,         tier: 'amber' as const },
+    { label: `Red (${stats.red})`,             tier: 'red' as const },
+  ], [visibleReports.length, stats])
 
   const filteredReports = useMemo(
-    () => tierFilter === 'all' ? allReports : allReports.filter(r => r.tier === tierFilter),
-    [allReports, tierFilter]
+    () => tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter),
+    [visibleReports, tierFilter]
   )
 
   // ── Map ─────────────────────────────────────────────────────────────────────
@@ -126,16 +151,37 @@ export default function DashboardView({ config, submittedReports = [], newReport
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
     filteredReports.forEach(report => {
-      const color = tierColors[report.tier].hex
-      const isNew = newReportIds.has(report.id)
+      const color    = tierColors[report.tier].hex
+      const approved = reviewMap[report.id] === 'approved'
+      const pending  = !reviewMap[report.id]  // not yet reviewed
+
+      // Approved: solid full-color, ✓ badge
+      // Pending:  semi-transparent fill, dashed-style outline, question mark
+      const size    = approved ? '24px' : '20px'
+      const opacity = pending ? '0.55' : '1'
+      const bg      = pending ? 'transparent' : color
+      const border  = pending
+        ? `2px dashed ${color}`
+        : approved ? '3px solid white' : '2.5px solid white'
+      const shadow  = approved
+        ? `0 0 0 2.5px ${color}, 0 4px 8px rgba(0,0,0,0.35)`
+        : pending ? 'none' : '0 2px 6px rgba(0,0,0,0.35)'
+
       const el = document.createElement('div')
-      el.style.cssText = `width:${isNew?'26px':'22px'};height:${isNew?'26px':'22px'};border-radius:50%;background:${color};border:${isNew?'3px':'2.5px'} solid white;box-shadow:${isNew?`0 0 0 2px ${color},0 4px 8px rgba(0,0,0,0.4)`:'0 2px 6px rgba(0,0,0,0.35)'};cursor:pointer;`
-      el.addEventListener('mouseenter', () => { el.style.boxShadow = `0 0 0 3px white,0 0 0 6px ${color}` })
-      el.addEventListener('mouseleave', () => { el.style.boxShadow = isNew ? `0 0 0 2px ${color},0 4px 8px rgba(0,0,0,0.4)` : '0 2px 6px rgba(0,0,0,0.35)' })
+      el.style.cssText = `width:${size};height:${size};border-radius:50%;background:${bg};border:${border};box-shadow:${shadow};cursor:pointer;position:relative;opacity:${opacity};`
+
+      if (approved) {
+        el.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:900;line-height:1;">✓</div>`
+      } else if (pending) {
+        el.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${color};font-size:10px;font-weight:900;line-height:1;">?</div>`
+      }
+
+      el.addEventListener('mouseenter', () => { el.style.opacity = '1' })
+      el.addEventListener('mouseleave', () => { el.style.opacity = opacity })
       el.addEventListener('click', () => { setSelectedReport(report); setMobileListOpen(false) })
       markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([report.lng, report.lat]).addTo(map))
     })
-  }, [filteredReports, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoading = CMS.enabled && cmsReports === null
 
@@ -206,15 +252,24 @@ export default function DashboardView({ config, submittedReports = [], newReport
           )) : filteredReports.map(report => {
             const isNew     = newReportIds.has(report.id)
             const inArea    = isWithinArea(report.lat, report.lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
+            const reviewed  = reviewMap[report.id]
+            const isPending = !reviewed
             return (
               <button key={report.id} onClick={() => { setSelectedReport(report); mapRef.current?.flyTo({center:[report.lng,report.lat],zoom:14}) }}
-                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedReport?.id===report.id?'bg-blue-50':isNew?'bg-green-50':''}`}>
+                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedReport?.id===report.id?'bg-blue-50':isNew?'bg-green-50':reviewed==='approved'?'bg-green-50/40':''}`}>
                 <div className="flex items-start gap-2">
-                  <div className="w-3 h-3 rounded-full mt-0.5 shrink-0" style={{backgroundColor:tierColors[report.tier].hex}}/>
+                  <div className={`w-3 h-3 rounded-full mt-0.5 shrink-0 ${isPending ? 'border-2 border-dashed bg-transparent' : ''}`}
+                    style={isPending
+                      ? {borderColor: tierColors[report.tier].hex}
+                      : {backgroundColor: tierColors[report.tier].hex}}/>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold text-gray-800 truncate">{report.id} {isNew&&<span className="text-green-600">★ New</span>}</span>
-                      <span className="text-xs font-bold" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {reviewed === 'approved' && <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1 rounded">✓</span>}
+                        {isPending && <span className="text-[9px] font-medium text-gray-400 bg-gray-100 px-1 rounded">Unverified</span>}
+                        <span className="text-xs font-bold" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
                     <div className="text-xs text-gray-400 truncate">{report.landmark}</div>
@@ -279,6 +334,20 @@ export default function DashboardView({ config, submittedReports = [], newReport
               <span className="text-gray-600">{t==='green'?'≥80 High Trust':t==='amber'?'50–79 Review':'<50 Human Review'}</span>
             </div>
           ))}
+          <div className="border-t border-gray-100 mt-1.5 pt-1.5 space-y-0.5">
+            <div className="flex items-center gap-1.5 py-0.5">
+              <div className="w-3 h-3 rounded-full bg-white border-2 border-dashed border-gray-400 flex items-center justify-center">
+                <span className="text-[6px] text-gray-400 font-bold leading-none">?</span>
+              </div>
+              <span className="text-gray-400">Unverified · Trust Score pending</span>
+            </div>
+            <div className="flex items-center gap-1.5 py-0.5">
+              <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white flex items-center justify-center">
+                <span className="text-[6px] text-white font-bold leading-none">✓</span>
+              </div>
+              <span className="text-gray-600">Admin Verified</span>
+            </div>
+          </div>
         </div>
 
         {/* ── Desktop selected report popup ── */}
@@ -291,7 +360,13 @@ export default function DashboardView({ config, submittedReports = [], newReport
                 </div>
                 <span className={`text-xs font-semibold ${tierColors[selectedReport.tier].text}`}>{selectedReport.id} · {getTierLabel(selectedReport.tier)}</span>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+              <div className="flex items-center gap-1.5">
+                {reviewMap[selectedReport.id] === 'approved'
+                  ? <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full">✓ Verified</span>
+                  : <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Unverified</span>
+                }
+                <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+              </div>
             </div>
             {selectedReport.imageUrl && (
               <img src={selectedReport.imageUrl} alt="damage photo" className="w-full h-36 object-cover"
@@ -369,8 +444,14 @@ export default function DashboardView({ config, submittedReports = [], newReport
                   <div className={`text-xs ${tierColors[selectedReport.tier].text} opacity-70`}>{selectedReport.id}</div>
                 </div>
               </div>
-              <button onClick={() => setSelectedReport(null)}
-                className="w-8 h-8 rounded-full bg-white bg-opacity-40 flex items-center justify-center text-gray-600 text-sm">✕</button>
+              <div className="flex items-center gap-2">
+                {reviewMap[selectedReport.id] === 'approved'
+                  ? <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full">✓ Verified</span>
+                  : <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Unverified</span>
+                }
+                <button onClick={() => setSelectedReport(null)}
+                  className="w-8 h-8 rounded-full bg-white bg-opacity-40 flex items-center justify-center text-gray-600 text-sm">✕</button>
+              </div>
             </div>
             {/* Scrollable content */}
             <div className="overflow-y-auto" style={{maxHeight:'calc(72vh - 60px)'}}>

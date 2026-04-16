@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react'
-import type { DamageReport, DeploymentConfig } from './types'
-import { fetchDeploymentConfig, DEFAULT_CONFIG } from './services/cmsApi'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import type { DamageReport, DeploymentConfig, ReviewMap, ReviewStatus } from './types'
+import { fetchDeploymentConfig, fetchCmsReports, DEFAULT_CONFIG } from './services/cmsApi'
+import { CMS } from './config'
+import { mockReports } from './data/mockReports'
 import ReporterView from './views/ReporterView'
 import DashboardView from './views/DashboardView'
+import AdminView from './views/AdminView'
 
-type View = 'reporter' | 'dashboard'
+type View = 'reporter' | 'dashboard' | 'admin'
 
 const STORAGE_KEY = 'vcm_submitted_reports'
+const REVIEW_KEY  = 'vcm_review_status'
 
 function loadStoredReports(): DamageReport[] {
   try {
@@ -23,32 +27,116 @@ function loadStoredReports(): DamageReport[] {
   }
 }
 
+function loadReviewMap(): ReviewMap {
+  try {
+    const raw = localStorage.getItem(REVIEW_KEY)
+    return raw ? (JSON.parse(raw) as ReviewMap) : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function App() {
-  const [view, setView] = useState<View>('reporter')
+  const [view, setView]                     = useState<View>('reporter')
   const [submittedReports, setSubmittedReports] = useState<DamageReport[]>(loadStoredReports)
-  const [config, setConfig] = useState<DeploymentConfig>(DEFAULT_CONFIG)
-  const [unseenCount, setUnseenCount] = useState(0)
-  // IDs submitted in THIS browser session only — cleared on reload, used for ★ New label
-  const [newReportIds, setNewReportIds] = useState<Set<string>>(new Set())
+  const [config, setConfig]                 = useState<DeploymentConfig>(DEFAULT_CONFIG)
+  const [unseenCount, setUnseenCount]       = useState(0)
+  const [newReportIds, setNewReportIds]     = useState<Set<string>>(new Set())
+  const [reviewMap, setReviewMap]           = useState<ReviewMap>(loadReviewMap)
+  const [cmsReports, setCmsReports]         = useState<DamageReport[]>([])
+  const [adminAuthed, setAdminAuthed]       = useState(false)
+
+  // Secret tap counter: tap VCM logo 5 times to open Admin
+  const logoTapCount = useRef(0)
+  const logoTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleLogoTap = () => {
+    logoTapCount.current += 1
+    if (logoTapTimer.current) clearTimeout(logoTapTimer.current)
+    logoTapTimer.current = setTimeout(() => { logoTapCount.current = 0 }, 2000)
+    if (logoTapCount.current >= 5) {
+      logoTapCount.current = 0
+      setView('admin')
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+    }
+  }
+
+  // Track whether notifications have been granted
+  const notifEnabled = useRef(false)
 
   useEffect(() => {
     fetchDeploymentConfig().then(setConfig)
   }, [])
+
+  // Fetch CMS reports at App level so AdminView always has data
+  useEffect(() => {
+    if (!CMS.enabled) return
+    fetchCmsReports().then(setCmsReports)
+    const id = setInterval(() => fetchCmsReports().then(reports => {
+      setCmsReports(prev => {
+        if (reports.length > prev.length) {
+          fireNotification(
+            `${reports.length - prev.length} new report(s) received`,
+            'Open the Admin panel to review and approve.'
+          )
+        }
+        return reports
+      })
+    }), 30_000)
+    return () => clearInterval(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merged list for AdminView: CMS + session submitted (deduped)
+  const allKnownReports = useMemo(() => {
+    const base = CMS.enabled ? cmsReports : mockReports
+    const sessionIds = new Set(submittedReports.map(r => r.id))
+    return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
+  }, [cmsReports, submittedReports])
 
   // Persist submitted reports to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(submittedReports))
   }, [submittedReports])
 
+  // Persist review map
+  useEffect(() => {
+    localStorage.setItem(REVIEW_KEY, JSON.stringify(reviewMap))
+  }, [reviewMap])
+
+  // Keep notifEnabled in sync with permission state
+  useEffect(() => {
+    if ('Notification' in window) {
+      notifEnabled.current = Notification.permission === 'granted'
+    }
+  }, [])
+
+  const fireNotification = (title: string, body: string) => {
+    if (!('Notification' in window)) return
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/favicon.ico' })
+    }
+  }
+
   const handleNewReport = (report: DamageReport) => {
     setSubmittedReports(prev => [report, ...prev])
     setNewReportIds(prev => new Set([...prev, report.id]))
     setUnseenCount(prev => prev + 1)
+    // Notify admin if they have enabled notifications
+    fireNotification(
+      'New Damage Report',
+      `${report.district} · Score: ${report.trustScore.total} · ${report.id}`
+    )
   }
 
   const handleGoToDashboard = () => {
     setView('dashboard')
     setUnseenCount(0)
+  }
+
+  const handleReview = (id: string, status: ReviewStatus) => {
+    setReviewMap(prev => ({ ...prev, [id]: status }))
   }
 
   return (
@@ -57,11 +145,14 @@ export default function App() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-blue-800 text-white shadow-md shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
-          {/* Logo + title */}
+          {/* Logo + title (tap 5× to open Admin) */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
+            <button
+              onClick={handleLogoTap}
+              className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0 select-none focus:outline-none active:opacity-70"
+            >
               VCM
-            </div>
+            </button>
             <div className="min-w-0">
               <div className="font-semibold text-sm leading-tight truncate">Verified Crisis Mapper</div>
               <div className="text-blue-300 text-xs leading-tight truncate">{config.scenario_label}</div>
@@ -103,6 +194,25 @@ export default function App() {
                 </span>
               )}
             </button>
+            {/* Admin tab appears only when already authenticated */}
+            {adminAuthed && (
+              <>
+                <div className="w-px h-8 bg-blue-600" />
+                <button
+                  onClick={() => setView('admin')}
+                  className={`px-4 py-2 flex items-center gap-2 transition-colors ${
+                    view === 'admin'
+                      ? 'bg-white text-blue-800 font-semibold'
+                      : 'text-blue-200 hover:bg-blue-700 hover:text-white'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  Admin
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -116,8 +226,22 @@ export default function App() {
             onViewDashboard={() => setView('dashboard')}
             onNewReport={handleNewReport}
           />
+        ) : view === 'dashboard' ? (
+          <DashboardView
+            config={config}
+            submittedReports={submittedReports}
+            newReportIds={newReportIds}
+            reviewMap={reviewMap}
+          />
         ) : (
-          <DashboardView config={config} submittedReports={submittedReports} newReportIds={newReportIds} />
+          <AdminView
+            reports={allKnownReports}
+            reviewMap={reviewMap}
+            onReview={handleReview}
+            isAuthed={adminAuthed}
+            onAuthSuccess={() => setAdminAuthed(true)}
+            onLogout={() => { setAdminAuthed(false); setView('reporter') }}
+          />
         )}
       </main>
 
@@ -136,7 +260,7 @@ export default function App() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-xs font-medium">Report Damage</span>
+          <span className="text-xs font-medium">Report</span>
         </button>
 
         <button
@@ -160,6 +284,24 @@ export default function App() {
           </div>
           <span className="text-xs font-medium">Dashboard</span>
         </button>
+
+        {/* Admin tab — only visible after authentication */}
+        {adminAuthed && (
+          <button
+            onClick={() => setView('admin')}
+            className={`flex-1 relative flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+              view === 'admin' ? 'text-blue-700' : 'text-gray-400'
+            }`}
+          >
+            {view === 'admin' && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-blue-700 rounded-full" />
+            )}
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            <span className="text-xs font-medium">Admin</span>
+          </button>
+        )}
       </nav>
 
     </div>
