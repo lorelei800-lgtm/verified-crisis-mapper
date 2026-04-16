@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
 import { CMS } from '../config'
-import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap } from '../types'
+import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap, InfraType } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 import { isWithinArea } from '../utils/geo'
@@ -33,12 +33,16 @@ export default function DashboardView({
   const mapRef             = useRef<maplibregl.Map | null>(null)
   const filteredReportsRef = useRef<DamageReport[]>([])
   const hasAutoFocusedRef  = useRef(false)
+  const touchStartY    = useRef(0)
+  const mobileListRef  = useRef<HTMLDivElement>(null)
 
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
   const [tierFilter,     setTierFilter]     = useState<TrustTier | 'all'>('all')
   const [sortBy,         setSortBy]         = useState<'time' | 'score'>('time')
+  const [infraFilter,    setInfraFilter]    = useState<InfraType | 'all'>('all')
   const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false)
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const baseReports = useMemo((): DamageReport[] => {
@@ -70,18 +74,40 @@ export default function DashboardView({
   ], [visibleReports.length, stats])
 
   const filteredReports = useMemo(() => {
-    const base = tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter)
+    let base = tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter)
+    if (infraFilter !== 'all') base = base.filter(r => r.infraType === infraFilter)
     return [...base].sort((a, b) =>
       sortBy === 'score'
         ? b.trustScore.total - a.trustScore.total
         : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )
-  }, [visibleReports, tierFilter, sortBy])
+  }, [visibleReports, tierFilter, sortBy, infraFilter])
 
   // Keep ref in sync so map click handlers always see the current list
   filteredReportsRef.current = filteredReports
 
   const isLoading = CMS.enabled && isCmsLoading && cmsReports === null
+
+  // Pull-to-refresh for mobile list
+  useEffect(() => {
+    const el = mobileListRef.current
+    if (!el || !onRefresh) return
+    const onStart = (e: TouchEvent) => { touchStartY.current = e.touches[0].clientY }
+    const onEnd   = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - touchStartY.current
+      if (dy > 64 && el.scrollTop <= 0) {
+        setIsPullRefreshing(true)
+        onRefresh()
+        setTimeout(() => setIsPullRefreshing(false), 1500)
+      }
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchend',   onEnd,   { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchend',   onEnd)
+    }
+  }, [onRefresh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Map init ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -293,6 +319,25 @@ export default function DashboardView({
           </div>
         </div>
 
+        {/* Infra type filter */}
+        <div className="px-3 pb-2 border-b border-gray-100">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-[10px] text-gray-400">Type:</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <button onClick={() => setInfraFilter('all')}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              All
+            </button>
+            {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
+              <button key={key} onClick={() => setInfraFilter(key)}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto">
           {isLoading ? Array.from({length:6}).map((_,i) => (
             <div key={i} className="px-3 py-2.5 border-b border-gray-100 animate-pulse">
@@ -368,6 +413,19 @@ export default function DashboardView({
                     ? f.tier==='all' ? 'bg-gray-700 text-white' : f.tier==='green' ? 'bg-green-600 text-white' : f.tier==='amber' ? 'bg-amber-500 text-white' : 'bg-red-600 text-white'
                     : 'bg-gray-100 text-gray-600'
                 }`}>{f.label}</button>
+            ))}
+          </div>
+          {/* Mobile infra filter */}
+          <div className="flex gap-1 overflow-x-auto mt-1.5 pb-0.5" style={{scrollbarWidth:'none'}}>
+            <button onClick={() => setInfraFilter('all')}
+              className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+              All Types
+            </button>
+            {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
+              <button key={key} onClick={() => setInfraFilter(key)}
+                className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                {label}
+              </button>
             ))}
           </div>
         </div>
@@ -456,7 +514,13 @@ export default function DashboardView({
                 </svg>
               </div>
             </button>
-            <div className={`bg-white overflow-y-auto transition-all duration-300 ${mobileListOpen ? 'max-h-60' : 'max-h-0 overflow-hidden'}`}>
+            <div ref={mobileListRef} className={`bg-white overflow-y-auto transition-all duration-300 ${mobileListOpen ? 'max-h-60' : 'max-h-0 overflow-hidden'}`}>
+              {isPullRefreshing && (
+                <div className="flex items-center justify-center gap-2 py-2 text-xs text-blue-600">
+                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"/>
+                  Refreshing…
+                </div>
+              )}
               {filteredReports.map(report => {
                 const isNew    = newReportIds.has(report.id)
                 const reviewed = reviewMap[report.id]

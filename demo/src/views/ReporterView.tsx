@@ -58,6 +58,9 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const [cmsError, setCmsError]             = useState<string | null>(null)
   const [cmsSyncStatus, setCmsSyncStatus]   = useState<CmsSyncStatus>('idle')
 
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const fileRef   = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -84,6 +87,15 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
 
     return () => { if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current) }
   }, [locationQuery])
+
+  // ── Online/offline listener ────────────────────────────────────────────────
+  useEffect(() => {
+    const up   = () => setIsOnline(true)
+    const down = () => setIsOnline(false)
+    window.addEventListener('online',  up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
 
   const handleSelectLocation = (result: NominatimResult) => {
     const lat = parseFloat(result.lat)
@@ -158,6 +170,8 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
+    setIsSubmitting(true)
     if (!damageLevel || !infraType) return
 
     setStep('submitting')
@@ -176,9 +190,9 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       aiAuthentic: true,
     })
 
-    await sleep(350)
+    await sleep(50)
     setSubmitPhase('analyzing')
-    await sleep(550)
+    await sleep(100)
     setResultHasC2PA(c2pa)
     setAiResult('authentic')
 
@@ -247,6 +261,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
 
   // ── Reset ──────────────────────────────────────────────────────────────────
   const handleReset = () => {
+    setIsSubmitting(false)
     setStep('form')
     setPhotoFile(null)
     setPhotoPreview(null)
@@ -352,6 +367,20 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
           </div>
         )}
 
+        {typeof navigator !== 'undefined' && 'share' in navigator && (
+          <button
+            onClick={() => navigator.share?.({
+              title: 'Verified Crisis Mapper',
+              text:  `Damage report submitted · Score: ${trustResult?.total ?? '—'} · ${config.subtitle}`,
+              url:   window.location.href,
+            })}
+            className="w-full py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+            </svg>
+            Share Report
+          </button>
+        )}
         <div className="flex gap-3 w-full">
           <button onClick={handleReset}
             className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
@@ -381,6 +410,13 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Offline indicator */}
+        {!isOnline && (
+          <div className="bg-orange-50 border border-orange-300 rounded-lg p-3 mb-4 flex items-center gap-2 text-xs text-orange-700">
+            <span className="text-base">📵</span>
+            <span><strong>You are offline.</strong> Your report will be queued and submitted automatically when connection is restored.</span>
+          </div>
+        )}
 
         {/* ── Step 1: Photo ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-4">
@@ -501,7 +537,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
                   type="text"
                   value={locationQuery}
                   onChange={e => setLocationQuery(e.target.value)}
-                  placeholder="Search location — e.g. Kojimachi, Hanzomon…"
+                  placeholder="Search location — e.g. Shibuya, Nairobi CBD, Beirut…"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-8 focus:outline-none focus:border-blue-400"
                 />
                 {locationSearching && (
@@ -550,9 +586,9 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
 
         {/* Submit */}
         <button type="submit"
-          disabled={!damageLevel || !infraType}
+          disabled={!damageLevel || !infraType || isSubmitting}
           className="w-full py-4 rounded-xl bg-blue-700 text-white font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-800 active:bg-blue-900 transition-colors shadow-md">
-          Submit Report
+          {isSubmitting ? '⟳ Submitting…' : 'Submit Report'}
         </button>
       </form>
     </div>

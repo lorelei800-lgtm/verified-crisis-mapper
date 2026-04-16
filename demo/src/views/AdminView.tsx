@@ -20,6 +20,8 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState(false)
   const [tab,      setTab]      = useState<ReviewTab>('pending')
+  const [pendingRejectId, setPendingRejectId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason]       = useState('')
 
   // ── All hooks at top level ────────────────────────────────────────────────────
 
@@ -271,27 +273,61 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
               </div>
 
               {/* ── Action buttons ── */}
-              <div className="flex border-t border-gray-100">
-                <button
-                  onClick={() => onReview(report.id, 'approved')}
-                  className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors border-r border-gray-100 ${
-                    status === 'approved' ? 'bg-green-500 text-white' : 'text-green-600 hover:bg-green-50 active:bg-green-100'
-                  }`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                  </svg>
-                  Approve
-                </button>
-                <button
-                  onClick={() => onReview(report.id, 'rejected')}
-                  className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors ${
-                    status === 'rejected' ? 'bg-gray-400 text-white' : 'text-red-500 hover:bg-red-50 active:bg-red-100'
-                  }`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                  Reject
-                </button>
+              <div className="border-t border-gray-100">
+                {pendingRejectId === report.id ? (
+                  /* Inline reject confirmation */
+                  <div className="p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-600">Reject reason:</p>
+                    <select
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-red-400">
+                      <option value="">— Select reason —</option>
+                      <option value="Image unclear or low quality">Image unclear or low quality</option>
+                      <option value="Duplicate report">Duplicate report</option>
+                      <option value="Location mismatch">Location mismatch</option>
+                      <option value="Outside reporting area">Outside reporting area</option>
+                      <option value="Suspected AI-generated image">Suspected AI-generated image</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setPendingRejectId(null); setRejectReason('') }}
+                        className="flex-1 py-2 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => { onReview(report.id, 'rejected'); setPendingRejectId(null); setRejectReason('') }}
+                        disabled={!rejectReason}
+                        className="flex-1 py-2 text-xs font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-40">
+                        Confirm Reject
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex">
+                    <button
+                      onClick={() => onReview(report.id, 'approved')}
+                      className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors border-r border-gray-100 ${
+                        status === 'approved' ? 'bg-green-500 text-white' : 'text-green-600 hover:bg-green-50 active:bg-green-100'
+                      }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => { if (status === 'rejected') { onReview(report.id, 'approved') } else { setPendingRejectId(report.id); setRejectReason('') } }}
+                      className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors ${
+                        status === 'rejected' ? 'bg-gray-400 text-white' : 'text-red-500 hover:bg-red-50 active:bg-red-100'
+                      }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                      Reject
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )
