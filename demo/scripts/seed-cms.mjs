@@ -310,7 +310,7 @@ for (let i = 0; i < REPORTS.length; i++) {
         Authorization:  `Bearer ${TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ fields: toFields(report) }),
+      body: JSON.stringify({ fields: toFields(report), status: 'public' }),
       signal: AbortSignal.timeout(20000),
     })
 

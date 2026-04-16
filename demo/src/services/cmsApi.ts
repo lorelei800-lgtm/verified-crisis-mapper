@@ -256,7 +256,7 @@ export async function createReportItem(
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({ fields }),
+      body: JSON.stringify({ fields, status: 'public' }),
     })
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
