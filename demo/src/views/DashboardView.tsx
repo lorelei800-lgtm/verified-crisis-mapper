@@ -23,15 +23,18 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
   const [mobileListOpen, setMobileListOpen] = useState(false)
 
   // CMS fetch state
-  const [cmsReports, setCmsReports] = useState<DamageReport[] | null>(null)
-  const [cmsError,   setCmsError]   = useState<string | null>(null)
+  const [cmsReports,   setCmsReports]   = useState<DamageReport[] | null>(null)
+  const [cmsError,     setCmsError]     = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const refreshCms = () => {
     if (!CMS.enabled) return
     setCmsError(null)
+    setIsRefreshing(true)
     fetchCmsReports()
       .then(reports => setCmsReports(reports))
       .catch(() => { setCmsError('Could not load CMS data'); setCmsReports([]) })
+      .finally(() => setIsRefreshing(false))
   }
 
   // Initial fetch
@@ -146,9 +149,9 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
             <div className="flex items-center gap-1.5">
               <CmsBadge isLoading={isLoading} cmsError={cmsError} />
               {CMS.enabled && (
-                <button onClick={refreshCms} title="Refresh"
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <button onClick={refreshCms} title="Refresh" disabled={isRefreshing}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 disabled:opacity-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
@@ -232,9 +235,9 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
             <div className="flex items-center gap-1.5">
               <CmsBadge isLoading={isLoading} cmsError={cmsError} />
               {CMS.enabled && (
-                <button onClick={refreshCms} title="Refresh"
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <button onClick={refreshCms} title="Refresh" disabled={isRefreshing}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 disabled:opacity-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
