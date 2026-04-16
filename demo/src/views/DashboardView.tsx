@@ -212,6 +212,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
                     </div>
                     <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
                     <div className="text-xs text-gray-400 truncate">{report.landmark}</div>
+                    <div className="text-[10px] text-gray-300">{formatDate(report.timestamp)}</div>
                   </div>
                 </div>
               </button>
@@ -289,6 +290,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
             )}
             <div className="p-3 space-y-1.5 text-xs">
               <InfoRow label="District" value={selectedReport.district}/>
+              <InfoRow label="Time"     value={formatDate(selectedReport.timestamp)}/>
               <InfoRow label="Damage"   value={damageLevelLabel[selectedReport.damageLevel]}/>
               <InfoRow label="Type"     value={infraTypeLabel[selectedReport.infraType]}/>
               <InfoRow label="Channel"  value={channelLabel[selectedReport.channel]}/>
@@ -335,6 +337,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
                           <span className="text-sm font-bold ml-2 shrink-0" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
                         </div>
                         <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
+                        <div className="text-[10px] text-gray-400">{formatDate(report.timestamp)}</div>
                       </div>
                     </div>
                   </button>
@@ -370,6 +373,7 @@ export default function DashboardView({ config, submittedReports = [] }: Props) 
               )}
               <div className="p-4 space-y-2 text-sm">
                 <InfoRowLg label="District" value={selectedReport.district}/>
+                <InfoRowLg label="Time"     value={formatDate(selectedReport.timestamp)}/>
                 <InfoRowLg label="Damage"   value={damageLevelLabel[selectedReport.damageLevel]}/>
                 <InfoRowLg label="Type"     value={infraTypeLabel[selectedReport.infraType]}/>
                 <InfoRowLg label="Channel"  value={channelLabel[selectedReport.channel]}/>
@@ -431,4 +435,15 @@ function MiniBar({ label, value, max, color }: { label: string; value: number; m
       <span className="text-gray-500 w-10 text-right">{value}/{max}</span>
     </div>
   )
+}
+
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      + ' · '
+      + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  } catch {
+    return iso
+  }
 }

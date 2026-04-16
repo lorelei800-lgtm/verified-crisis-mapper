@@ -44,11 +44,12 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const fileRef    = useRef<HTMLInputElement>(null)
   const cameraRef  = useRef<HTMLInputElement>(null)
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>, source: 'camera' | 'library') => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>, source: 'camera' | 'library') => {
     const file = e.target.files?.[0]
     if (!file) return
-    setPhotoFile(file)
-    setPhotoPreview(URL.createObjectURL(file))
+    const compressed = await compressImage(file)
+    setPhotoFile(compressed)
+    setPhotoPreview(URL.createObjectURL(compressed))
     setPhotoSource(source)
   }
 
@@ -450,6 +451,29 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       </form>
     </div>
   )
+}
+
+async function compressImage(file: File, maxPx = 1280, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxPx || height > maxPx) {
+        if (width > height) { height = Math.round(height * maxPx / width); width = maxPx }
+        else { width = Math.round(width * maxPx / height); height = maxPx }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
+      }, 'image/jpeg', quality)
+    }
+    img.onerror = () => resolve(file)
+    img.src = URL.createObjectURL(file)
+  })
 }
 
 function sleep(ms: number) {
