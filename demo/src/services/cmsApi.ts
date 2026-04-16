@@ -259,39 +259,77 @@ export async function createReportItem(
       signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ fields }),
     })
+    console.info(`[CMS] create → ${res.status}, content-length: ${res.headers.get('content-length')}, location: ${res.headers.get('location')}`)
+
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
       console.warn(`[CMS] createReportItem ${res.status}:`, errBody)
       throw new Error(`${res.status} ${res.statusText}`)
     }
 
-    // Parse item ID from response (needed for publish step)
+    // Try to extract item ID from response body or Location header
     let itemId: string | null = null
-    if (res.status !== 204 && res.headers.get('content-length') !== '0') {
-      const text = await res.text()
+
+    // Try Location header first (e.g. "Location: /api/.../items/xxxx")
+    const location = res.headers.get('location')
+    if (location) {
+      const m = location.match(/items\/([^/?]+)/)
+      if (m) itemId = m[1]
+    }
+
+    // Try response body
+    if (!itemId && res.status !== 204) {
+      const text = await res.text().catch(() => '')
+      console.info('[CMS] create body:', text.slice(0, 200))
       if (text) {
-        const data = JSON.parse(text) as { id?: string }
-        itemId = data.id ?? null
+        try {
+          const data = JSON.parse(text) as { id?: string }
+          itemId = data.id ?? null
+        } catch { /* ignore parse errors */ }
       }
     }
 
-    // Step 2: Publish the item so it appears in the public read API
-    if (itemId) {
-      const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
-      const pubRes = await fetch(publishUrl, {
-        method: 'PATCH',
-        headers: {
-          Authorization:  `Bearer ${CMS.token}`,
-          'Content-Type': 'application/json',
-        },
+    // Fallback: fetch the newest item from Integration API to get its ID
+    if (!itemId) {
+      console.info('[CMS] no ID in response — fetching newest item to publish')
+      await new Promise(r => setTimeout(r, 800))
+      const listRes = await fetch(`${url}?perPage=1`, {
+        headers: { Authorization: `Bearer ${CMS.token}` },
         signal: AbortSignal.timeout(10000),
-        body: JSON.stringify({ status: 'public' }),
       })
-      if (!pubRes.ok) {
+      if (listRes.ok) {
+        const listData = await listRes.json() as { items?: {id:string}[], results?: {id:string}[], totalCount?: number }
+        console.info('[CMS] list response keys:', Object.keys(listData), 'totalCount:', listData.totalCount)
+        itemId = listData.items?.[0]?.id ?? listData.results?.[0]?.id ?? null
+      }
+    }
+
+    console.info('[CMS] itemId to publish:', itemId)
+
+    // Step 2: Publish via PATCH — try both URL patterns
+    if (itemId) {
+      // Pattern A: .../models/{model}/items/{id}
+      const publishUrlA = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
+      // Pattern B: .../items/{id}  (no model segment)
+      const publishUrlB = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}`
+
+      for (const pUrl of [publishUrlA, publishUrlB]) {
+        const pubRes = await fetch(pUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization:  `Bearer ${CMS.token}`,
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify({ status: 'public' }),
+        })
+        console.info(`[CMS] PATCH ${pUrl.split('/api/')[1]} → ${pubRes.status}`)
+        if (pubRes.ok) {
+          console.info('[CMS] item published ✓', itemId)
+          break
+        }
         const errBody = await pubRes.text().catch(() => '')
-        console.warn(`[CMS] publishItem ${pubRes.status}:`, errBody)
-      } else {
-        console.info('[CMS] item published:', itemId)
+        console.warn(`[CMS] publish attempt failed ${pubRes.status}:`, errBody.slice(0, 100))
       }
     }
 
