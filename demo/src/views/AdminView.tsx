@@ -10,7 +10,7 @@ type ReviewTab = 'all' | 'pending' | 'approved' | 'rejected'
 interface Props {
   reports: DamageReport[]
   reviewMap: ReviewMap
-  onReview: (id: string, status: ReviewStatus) => void
+  onReview: (id: string, status: ReviewStatus, reason?: string) => void
   isAuthed: boolean
   onAuthSuccess: () => void
   onLogout: () => void
@@ -297,7 +297,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
                         Cancel
                       </button>
                       <button
-                        onClick={() => { onReview(report.id, 'rejected'); setPendingRejectId(null); setRejectReason('') }}
+                        onClick={() => { onReview(report.id, 'rejected', rejectReason); setPendingRejectId(null); setRejectReason('') }}
                         disabled={!rejectReason}
                         className="flex-1 py-2 text-xs font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-40">
                         Confirm Reject

@@ -64,7 +64,8 @@ interface CmsItem {
   trust_score_cross?: number
   trust_score_meta?: number
   tier?: string
-  review_status?: string  // 'approved' | 'rejected' | '' — written by admin
+  review_status?: string   // 'approved' | 'rejected' | '' — written by admin
+  reject_reason?: string   // free-text reason set when admin rejects
 }
 
 interface CmsListResponse {
@@ -200,6 +201,7 @@ function splitProject(): [string, string] {
 export async function updateReviewStatus(
   cmsItemId: string,
   status: ReviewStatus | null,
+  rejectReason?: string,
 ): Promise<boolean> {
   if (!CMS.writable) {
     console.warn('[CMS] updateReviewStatus: CMS not writable (no token)')
@@ -208,6 +210,17 @@ export async function updateReviewStatus(
   const [ws, proj] = splitProject()
   // Must use the /models/{model}/ path — bare /items/{id} returns 404
   const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${cmsItemId}`
+
+  const fields: Array<{ key: string; value: unknown }> = [
+    { key: 'review_status', value: status ?? '' },
+  ]
+  // Always write reject_reason — clear it when approving, set it when rejecting
+  if (status === 'rejected' && rejectReason) {
+    fields.push({ key: 'reject_reason', value: rejectReason })
+  } else if (status === 'approved') {
+    fields.push({ key: 'reject_reason', value: '' })
+  }
+
   try {
     const res = await fetch(url, {
       method: 'PATCH',
@@ -215,9 +228,8 @@ export async function updateReviewStatus(
         Authorization:  `Bearer ${CMS.token}`,
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(10000),
-      // Re:Earth CMS requires at least one field — include review_status
-      body: JSON.stringify({ fields: [{ key: 'review_status', value: status ?? '' }] }),
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ fields }),
     })
     console.info(`[CMS] updateReviewStatus ${cmsItemId} → ${status} : HTTP ${res.status}`)
     if (!res.ok) return false
@@ -253,7 +265,7 @@ export async function uploadAsset(file: File): Promise<CmsAsset | null> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${CMS.token}` },
-      signal: AbortSignal.timeout(15000),   // 15 秒でタイムアウト
+      signal: AbortSignal.timeout(60000),   // 60s — mobile photo upload on slow networks
       body,
     })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
@@ -372,26 +384,37 @@ export async function createReportItem(
 
     console.info('[CMS] itemId to publish:', itemId)
 
-    // Step 2: Publish via POST .../models/{model}/items/{id}/publish
-    // (confirmed working endpoint for Re:Earth CMS Integration API)
+    // Step 2: Publish — retry once on failure
     if (itemId) {
       const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}/publish`
-      const pubRes = await fetch(publishUrl, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${CMS.token}`, 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(10000),
-        body: '{}',
-      })
-      console.info(`[CMS] publish → ${pubRes.status}`)
-      if (pubRes.ok) {
-        console.info('[CMS] item published ✓', itemId)
-      } else {
-        const errTxt = await pubRes.text().catch(() => '')
-        console.warn(`[CMS] publish failed ${pubRes.status}:`, errTxt.slice(0, 200))
+      let published = false
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const pubRes = await fetch(publishUrl, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${CMS.token}`, 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(15000),
+            body: '{}',
+          })
+          console.info(`[CMS] publish attempt ${attempt + 1} → ${pubRes.status}`)
+          if (pubRes.ok) { published = true; break }
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1500))   // wait before retry
+        } catch (e) {
+          console.warn(`[CMS] publish attempt ${attempt + 1} threw`, e)
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1500))
+        }
+      }
+
+      if (!published) {
+        // Item was created in CMS but is in draft state — NOT visible on public API
+        // Return null so the caller sets cmsSyncStatus='error' rather than 'synced'
+        console.warn('[CMS] publish failed after retry — item is in draft, not public')
+        return null
       }
     }
 
-    return itemId ?? 'created'
+    return itemId ?? null
   } catch (err) {
     console.warn('[CMS] createReportItem failed', err)
     return null

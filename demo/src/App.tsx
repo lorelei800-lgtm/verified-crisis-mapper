@@ -142,14 +142,14 @@ export default function App() {
     setUnseenCount(0)
   }
 
-  const handleReview = (id: string, status: ReviewStatus) => {
+  const handleReview = (id: string, status: ReviewStatus, reason?: string) => {
     // Optimistic local update
     setReviewMap(prev => ({ ...prev, [id]: status }))
     // Write back to CMS so other devices see the change
     const report = allKnownReports.find(r => r.id === id)
-    console.info('[Admin] handleReview', id, status, 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
+    console.info('[Admin] handleReview', id, status, reason ?? '(no reason)', 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
     if (report?.cmsId) {
-      updateReviewStatus(report.cmsId, status).then(ok => {
+      updateReviewStatus(report.cmsId, status, reason).then(ok => {
         if (!ok) console.warn('[Admin] review write-back failed — check VITE_CMS_TOKEN secret in GitHub')
       })
     } else {
