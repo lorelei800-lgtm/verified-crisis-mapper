@@ -218,12 +218,14 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       imageUrl:    localImageUrl,
     }
 
-    // ✅ Show result immediately — no waiting for CMS
+    // ✅ Show result first — guaranteed even if parent callback throws
     setSubmitPhase('done')
     setTrustResult(score)
     setFinalImageUrl(localImageUrl ?? null)
-    onNewReport(newReport)
-    setStep('result')
+    setStep('result')        // ← set BEFORE calling parent, so spinner always clears
+
+    // Notify parent (safe — iOS Safari Notification API can throw inside handleNewReport)
+    try { onNewReport(newReport) } catch (err) { console.warn('[submit] onNewReport threw:', err) }
 
     // CMS upload + save in background (non-blocking)
     if (CMS.writable) {
