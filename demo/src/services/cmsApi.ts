@@ -220,7 +220,19 @@ export async function updateReviewStatus(
       body: JSON.stringify({ fields: [{ key: 'review_status', value: status ?? '' }] }),
     })
     console.info(`[CMS] updateReviewStatus ${cmsItemId} → ${status} : HTTP ${res.status}`)
-    return res.ok
+    if (!res.ok) return false
+
+    // Re:Earth CMS reverts items to "draft" after a PATCH, so re-publish immediately.
+    // Without this, the updated item disappears from the public read API on other devices.
+    const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${cmsItemId}/publish`
+    const pubRes = await fetch(publishUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${CMS.token}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      body: '{}',
+    })
+    console.info(`[CMS] updateReviewStatus re-publish → ${pubRes.status}`)
+    return true
   } catch (err) {
     console.warn('[CMS] updateReviewStatus failed', err)
     return false

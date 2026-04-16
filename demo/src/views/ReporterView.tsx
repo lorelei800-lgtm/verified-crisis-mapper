@@ -429,14 +429,21 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
             className={`w-full py-3.5 rounded-xl border-2 text-sm font-medium mb-3 transition-colors ${
               gpsStatus === 'acquired'  ? 'bg-green-50 border-green-400 text-green-700'
               : gpsStatus === 'acquiring' ? 'bg-blue-50 border-blue-300 text-blue-600'
+              : gpsStatus === 'error'   ? 'bg-amber-50 border-amber-300 text-amber-700'
               : 'border-gray-200 bg-gray-50 text-gray-600 active:bg-gray-100'
             }`}>
             {gpsStatus === 'idle'      && '📍 Auto-capture GPS location'}
             {gpsStatus === 'acquiring' && '⟳ Acquiring GPS…'}
             {gpsStatus === 'acquired'  && !geocoding && `✓ GPS captured (±${gpsAccuracy}m)`}
             {gpsStatus === 'acquired'  && geocoding  && `✓ GPS captured (±${gpsAccuracy}m) · Looking up address…`}
-            {gpsStatus === 'error'     && '⚠ GPS unavailable — enter landmark manually'}
+            {gpsStatus === 'error'     && '⚠ Location unavailable — tap to retry'}
           </button>
+          {gpsStatus === 'error' && (
+            <div className="mb-3 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-700">
+              GPS was denied or timed out. Your report will be placed near the centre of the reporting area.
+              Enter a landmark below to help responders locate the site.
+            </div>
+          )}
           <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)}
             placeholder="Landmark / street name (backup if no GPS)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />

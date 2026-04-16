@@ -18,9 +18,10 @@ interface Props {
 }
 
 export default function DashboardView({ config, submittedReports = [], newReportIds = new Set(), reviewMap = {}, onNewCmsReports, onAllReportsChanged }: Props) {
-  const mapContainer = useRef<HTMLDivElement>(null)
-  const mapRef       = useRef<maplibregl.Map | null>(null)
-  const markersRef   = useRef<maplibregl.Marker[]>([])
+  const mapContainer        = useRef<HTMLDivElement>(null)
+  const mapRef              = useRef<maplibregl.Map | null>(null)
+  // Always-fresh ref used inside map click handlers (avoids stale closure)
+  const filteredReportsRef  = useRef<DamageReport[]>([])
 
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
   const [tierFilter, setTierFilter]         = useState<TrustTier | 'all'>('all')
@@ -111,6 +112,8 @@ export default function DashboardView({ config, submittedReports = [], newReport
     () => tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter),
     [visibleReports, tierFilter]
   )
+  // Keep ref in sync so map click handlers always see the current list
+  filteredReportsRef.current = filteredReports
 
   // ── Map ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -123,6 +126,8 @@ export default function DashboardView({ config, submittedReports = [], newReport
       container: mapContainer.current,
       style: {
         version: 8,
+        // Glyphs required for cluster count symbol layer
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: { 'esri-satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics', maxzoom: 18 } },
         layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri-satellite' }],
       },
@@ -132,7 +137,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
     mapRef.current = map
     map.on('load', () => setMapReady(true))
-    return () => { markersRef.current.forEach(m => m.remove()); map.remove(); mapRef.current = null }
+    return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When CMS delivers a config different from defaults, re-fit the map bounds
@@ -145,42 +150,124 @@ export default function DashboardView({ config, submittedReports = [], newReport
     )
   }, [config, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── GeoJSON source + MapLibre GL cluster layers ───────────────────────────────
+  // Re-runs when filteredReports or reviewMap changes.
+  // First run: creates source + all layers + event handlers.
+  // Subsequent runs: just calls setData() to update the GeoJSON (no layer recreation needed).
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
-    markersRef.current.forEach(m => m.remove())
-    markersRef.current = []
-    filteredReports.forEach(report => {
-      const color    = tierColors[report.tier].hex
-      const approved = reviewMap[report.id] === 'approved'
-      const pending  = !reviewMap[report.id]  // not yet reviewed
 
-      // Approved: solid full-color, ✓ badge
-      // Pending:  semi-transparent fill, dashed-style outline, question mark
-      const size    = approved ? '24px' : '20px'
-      const opacity = pending ? '0.55' : '1'
-      const bg      = pending ? 'transparent' : color
-      const border  = pending
-        ? `2px dashed ${color}`
-        : approved ? '3px solid white' : '2.5px solid white'
-      const shadow  = approved
-        ? `0 0 0 2.5px ${color}, 0 4px 8px rgba(0,0,0,0.35)`
-        : pending ? 'none' : '0 2px 6px rgba(0,0,0,0.35)'
+    const features = filteredReports.map(report => ({
+      type: 'Feature' as const,
+      properties: {
+        id:       report.id,
+        color:    tierColors[report.tier].hex,
+        // 'approved' | 'pending' — used in paint expressions below
+        status:   reviewMap[report.id] === 'approved' ? 'approved' : 'pending',
+      },
+      geometry: { type: 'Point' as const, coordinates: [report.lng, report.lat] },
+    }))
+    const geojson = { type: 'FeatureCollection' as const, features }
 
-      const el = document.createElement('div')
-      el.style.cssText = `width:${size};height:${size};border-radius:50%;background:${bg};border:${border};box-shadow:${shadow};cursor:pointer;position:relative;opacity:${opacity};`
+    // ── Update-only path ──────────────────────────────────────────────────────
+    const src = map.getSource('reports') as maplibregl.GeoJSONSource | undefined
+    if (src) { src.setData(geojson); return }
 
-      if (approved) {
-        el.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:900;line-height:1;">✓</div>`
-      } else if (pending) {
-        el.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${color};font-size:10px;font-weight:900;line-height:1;">?</div>`
-      }
-
-      el.addEventListener('mouseenter', () => { el.style.opacity = '1' })
-      el.addEventListener('mouseleave', () => { el.style.opacity = opacity })
-      el.addEventListener('click', () => { setSelectedReport(report); setMobileListOpen(false) })
-      markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([report.lng, report.lat]).addTo(map))
+    // ── First-time setup: source + layers + event handlers ───────────────────
+    map.addSource('reports', {
+      type: 'geojson',
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 12,   // stop clustering above zoom 12
+      clusterRadius: 45,
     })
+
+    // Cluster background circles (graduated size & colour by count)
+    map.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'reports',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step', ['get', 'point_count'],
+          '#60a5fa', 5, '#3b82f6', 15, '#1d4ed8',
+        ],
+        'circle-radius': [
+          'step', ['get', 'point_count'], 16, 5, 22, 15, 28,
+        ],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+
+    // Cluster count label
+    map.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'reports',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-size': 11,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+      },
+      paint: { 'text-color': '#ffffff' },
+    })
+
+    // Individual points — approved: filled; pending: hollow ring at reduced opacity
+    map.addLayer({
+      id: 'points',
+      type: 'circle',
+      source: 'reports',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': [
+          'case',
+          ['==', ['get', 'status'], 'approved'], ['get', 'color'],
+          'rgba(255,255,255,0.08)',
+        ],
+        'circle-radius': 10,
+        'circle-stroke-width': [
+          'case', ['==', ['get', 'status'], 'approved'], 2.5, 2,
+        ],
+        'circle-stroke-color': ['get', 'color'],
+        'circle-opacity': [
+          'case', ['==', ['get', 'status'], 'pending'], 0.6, 1.0,
+        ],
+        'circle-stroke-opacity': [
+          'case', ['==', ['get', 'status'], 'pending'], 0.75, 1.0,
+        ],
+      },
+    })
+
+    // ── Cluster click: zoom in to expand ─────────────────────────────────────
+    map.on('click', 'clusters', async (e) => {
+      const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
+      if (!feats.length) return
+      const clusterId = feats[0].properties!.cluster_id as number
+      const coords = (feats[0].geometry as unknown as { coordinates: [number, number] }).coordinates
+      try {
+        const zoom = await (map.getSource('reports') as maplibregl.GeoJSONSource).getClusterExpansionZoom(clusterId)
+        map.easeTo({ center: coords, zoom })
+      } catch { /* ignore */ }
+    })
+
+    // ── Individual point click: show detail panel ─────────────────────────────
+    map.on('click', 'points', (e) => {
+      const feats = map.queryRenderedFeatures(e.point, { layers: ['points'] })
+      if (!feats.length) return
+      const id = feats[0].properties!.id as string
+      const report = filteredReportsRef.current.find(r => r.id === id)
+      if (report) { setSelectedReport(report); setMobileListOpen(false) }
+    })
+
+    // ── Cursor ────────────────────────────────────────────────────────────────
+    map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
+    map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = '' })
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoading = CMS.enabled && cmsReports === null
