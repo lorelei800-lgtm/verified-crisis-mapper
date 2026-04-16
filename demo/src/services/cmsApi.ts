@@ -110,7 +110,8 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
 
   // Re:Earth CMS public API: /api/p/{project}/{model}
   // e.g. https://api.cms.reearth.io/api/p/verified-crisis-mapper/Demo-v1/damage-report
-  const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}`
+  // perPage=100 avoids the default 20-item page limit (seeded data alone is 28 items)
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}?perPage=100`
 
   try {
     // Public read API — no Authorization header needed (and rejected if sent)
