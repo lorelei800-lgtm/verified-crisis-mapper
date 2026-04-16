@@ -119,6 +119,7 @@ export async function fetchCmsReports(): Promise<DamageReport[]> {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: CmsListResponse = await res.json()
+    console.info(`[CMS] fetchReports: totalCount=${data.totalCount}, returned=${data.results.length}`)
     return data.results.map(cmsItemToReport)
   } catch (err) {
     console.warn('[CMS] fetchReports failed — using mock data', err)

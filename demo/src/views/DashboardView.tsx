@@ -22,7 +22,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
   const [tierFilter, setTierFilter]         = useState<TrustTier | 'all'>('all')
   const [mapReady, setMapReady]             = useState(false)
-  const [mobileListOpen, setMobileListOpen] = useState(false)
+  const [mobileListOpen, setMobileListOpen] = useState(true)
 
   // CMS fetch state
   const [cmsReports,   setCmsReports]   = useState<DamageReport[] | null>(null)
