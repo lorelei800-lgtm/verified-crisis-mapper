@@ -206,7 +206,8 @@ export async function updateReviewStatus(
     return false
   }
   const [ws, proj] = splitProject()
-  const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${cmsItemId}`
+  // Must use the /models/{model}/ path — bare /items/{id} returns 404
+  const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${cmsItemId}`
   try {
     const res = await fetch(url, {
       method: 'PATCH',
@@ -215,6 +216,7 @@ export async function updateReviewStatus(
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(10000),
+      // Re:Earth CMS requires at least one field — include review_status
       body: JSON.stringify({ fields: [{ key: 'review_status', value: status ?? '' }] }),
     })
     console.info(`[CMS] updateReviewStatus ${cmsItemId} → ${status} : HTTP ${res.status}`)
@@ -358,30 +360,25 @@ export async function createReportItem(
 
     console.info('[CMS] itemId to publish:', itemId)
 
-    // Step 2: Publish via PATCH — include fields:[] which some CMS versions require
+    // Step 2: Publish — PATCH /models/{model}/items/{id} with original fields + status:'public'
+    // Re:Earth CMS requires at least one field in the body (empty fields:[] → 400)
     if (itemId) {
-      // Pattern A: no model segment (most common for Re:Earth CMS)
-      const publishUrlA = `${CMS.baseUrl}/api/${ws}/projects/${proj}/items/${itemId}`
-      // Pattern B: with model segment
-      const publishUrlB = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
-
-      for (const pUrl of [publishUrlA, publishUrlB]) {
-        const pubRes = await fetch(pUrl, {
-          method: 'PATCH',
-          headers: {
-            Authorization:  `Bearer ${CMS.token}`,
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(10000),
-          body: JSON.stringify({ status: 'public', fields: [] }),
-        })
-        console.info(`[CMS] PATCH ${pUrl.split('/api/')[1]} → ${pubRes.status}`)
-        if (pubRes.ok) {
-          console.info('[CMS] item published ✓', itemId)
-          break
-        }
+      const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
+      const pubRes = await fetch(publishUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization:  `Bearer ${CMS.token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({ status: 'public', fields }),  // reuse original fields
+      })
+      console.info(`[CMS] PATCH publish → ${pubRes.status}`)
+      if (pubRes.ok) {
+        console.info('[CMS] item published ✓', itemId)
+      } else {
         const errBody = await pubRes.text().catch(() => '')
-        console.warn(`[CMS] publish attempt failed ${pubRes.status}:`, errBody.slice(0, 150))
+        console.warn(`[CMS] publish failed ${pubRes.status}:`, errBody.slice(0, 200))
       }
     }
 
