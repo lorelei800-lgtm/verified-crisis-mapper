@@ -317,10 +317,8 @@ export default function DashboardView({ config, submittedReports = [], newReport
 
         {/* ── Mobile: report list bottom sheet (hidden on desktop) ── */}
         {!selectedReport && (
-          <div className={`lg:hidden absolute bottom-0 left-0 right-0 z-20 transition-transform duration-300 ${
-            mobileListOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'
-          }`}>
-            {/* Handle bar */}
+          <div className="lg:hidden absolute bottom-0 left-0 right-0 z-20">
+            {/* Handle bar — always visible */}
             <button onClick={() => setMobileListOpen(!mobileListOpen)}
               className="w-full h-12 bg-white border-t border-gray-200 rounded-t-2xl flex items-center justify-between px-4 shadow-lg">
               <span className="text-sm font-semibold text-gray-700">
@@ -330,8 +328,8 @@ export default function DashboardView({ config, submittedReports = [], newReport
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/>
               </svg>
             </button>
-            {/* Scrollable list */}
-            <div className="bg-white max-h-60 overflow-y-auto">
+            {/* Collapsible list — max-height transition avoids overflow-hidden clipping */}
+            <div className={`bg-white overflow-y-auto transition-all duration-300 ${mobileListOpen ? 'max-h-60' : 'max-h-0 overflow-hidden'}`}>
               {filteredReports.map(report => {
                 const isNew = newReportIds.has(report.id)
                 return (
