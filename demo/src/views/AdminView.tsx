@@ -86,7 +86,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
               </svg>
             </div>
             <h2 className="text-xl font-bold text-gray-800">Admin Login</h2>
-            <p className="text-sm text-gray-500 mt-1">4桁のPINを入力してログイン</p>
+            <p className="text-sm text-gray-500 mt-1">Enter your 4-digit PIN to continue</p>
           </div>
 
           {/* PIN dots */}
@@ -101,7 +101,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
           </div>
 
           <div className="h-5 text-center mb-4">
-            {pinError && <p className="text-red-500 text-sm">PINが違います</p>}
+            {pinError && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>}
           </div>
 
           {/* Numpad */}
@@ -134,7 +134,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
                 ? 'bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}>
-            ログイン
+            Login
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-4">Demo PIN: 0000</p>
@@ -199,7 +199,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
             <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
-            <p className="text-sm">このカテゴリにレポートはありません</p>
+            <p className="text-sm">No reports in this category</p>
           </div>
         ) : sorted.map(report => {
           const status = reviewMap[report.id]
@@ -280,7 +280,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
                   </svg>
-                  承認
+                  Approve
                 </button>
                 <button
                   onClick={() => onReview(report.id, 'rejected')}
@@ -290,7 +290,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
-                  却下
+                  Reject
                 </button>
               </div>
             </div>
@@ -316,17 +316,21 @@ function AdminMiniBar({ label, value, max, color }: { label: string; value: numb
   )
 }
 
+/** Locale-independent formatter — avoids "Invalid Date" on mobile browsers */
 function formatDate(iso: string): string {
   if (!iso) return '—'
   try {
-    // Handle space-separated formats like "2026-10-15 06:23:00 +0000 UTC"
-    const normalized = iso.replace(' ', 'T').replace(' +0000 UTC', 'Z').replace(' UTC', 'Z')
+    const normalized = iso
+      .replace(' ', 'T')
+      .replace(' +0000 UTC', 'Z')
+      .replace(' UTC', 'Z')
     const d = new Date(normalized)
-    if (isNaN(d.getTime())) return iso
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      + ' · '
-      + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    if (isNaN(d.getTime())) return '—'
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${hh}:${mm}`
   } catch {
-    return iso
+    return '—'
   }
 }

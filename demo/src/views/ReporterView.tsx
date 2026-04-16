@@ -469,15 +469,27 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
               Enter a landmark below to help responders locate the site.
             </div>
           )}
-          {district && gpsStatus === 'acquired' && (
-            <div className="mb-2 flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              <span>District: <strong>{district}</strong> · auto-detected from GPS</span>
+          {/* GPS mini-map preview — appears when coordinates are acquired */}
+          {gpsStatus === 'acquired' && (
+            <div className="mb-3 rounded-xl overflow-hidden border border-gray-200 shadow-sm" style={{height: 130}}>
+              <iframe
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${gpsLng-0.006},${gpsLat-0.005},${gpsLng+0.006},${gpsLat+0.005}&layer=mapnik&marker=${gpsLat},${gpsLng}`}
+                className="w-full h-full border-0"
+                loading="lazy"
+                title="GPS Location Preview"
+              />
             </div>
           )}
+
+          {/* District — auto-filled from GPS, always editable */}
+          <input
+            type="text" value={district} onChange={e => setDistrict(e.target.value)}
+            placeholder="District / ward (auto-filled from GPS)"
+            className={`w-full border rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-blue-400 ${
+              district ? 'border-blue-200 bg-blue-50 text-blue-800' : 'border-gray-300'
+            }`}
+          />
+
           <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)}
             placeholder="Landmark / street name (e.g. Kanda River Bridge)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />

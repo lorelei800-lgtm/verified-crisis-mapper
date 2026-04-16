@@ -30,6 +30,8 @@ export default function App() {
   const [newReportIds, setNewReportIds]     = useState<Set<string>>(new Set())
   const [reviewMap, setReviewMap]           = useState<ReviewMap>(loadReviewMap)
   const [cmsReports, setCmsReports]         = useState<DamageReport[]>([])
+  const [isCmsLoading, setIsCmsLoading]     = useState(true)
+  const [cmsFetchError, setCmsFetchError]   = useState<string | null>(null)
   const [adminAuthed, setAdminAuthed]       = useState(false)
 
   // Secret tap counter: tap VCM logo 5 times to open Admin
@@ -56,8 +58,9 @@ export default function App() {
     fetchDeploymentConfig().then(setConfig)
   }, [])
 
-  // Fetch CMS reports at App level so AdminView always has data
+  // Single source of truth for CMS data — prevents double-polling white screen
   const doFetch = (isInitial = false) => {
+    setCmsFetchError(null)
     fetchCmsReports().then(({ reports, reviewMap: cmsReviewMap }) => {
       setCmsReports(prev => {
         if (!isInitial && reports.length > prev.length) {
@@ -72,6 +75,10 @@ export default function App() {
       if (Object.keys(cmsReviewMap).length > 0) {
         setReviewMap(prev => ({ ...prev, ...cmsReviewMap }))
       }
+    }).catch(() => {
+      setCmsFetchError('Could not load CMS data')
+    }).finally(() => {
+      setIsCmsLoading(false)
     })
   }
 
@@ -89,6 +96,12 @@ export default function App() {
     const sessionIds = new Set(submittedReports.map(r => r.id))
     return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
   }, [cmsReports, submittedReports])
+
+  // Pending review count — shown as badge on Admin nav tab
+  const adminPendingCount = useMemo(
+    () => allKnownReports.filter(r => !reviewMap[r.id]).length,
+    [allKnownReports, reviewMap]
+  )
 
   // Persist review map
   useEffect(() => {
@@ -118,6 +131,8 @@ export default function App() {
       'New Damage Report',
       `${report.district} · Score: ${report.trustScore.total} · ${report.id}`
     )
+    // Refresh CMS after a short delay to pick up the newly published item
+    if (CMS.enabled) setTimeout(() => doFetch(), 3000)
   }
 
   const handleGoToDashboard = () => {
@@ -211,6 +226,11 @@ export default function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
                   Admin
+                  {adminPendingCount > 0 && (
+                    <span className="bg-amber-400 text-amber-900 text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+                      {adminPendingCount}
+                    </span>
+                  )}
                 </button>
               </>
             )}
@@ -233,6 +253,10 @@ export default function App() {
             submittedReports={submittedReports}
             newReportIds={newReportIds}
             reviewMap={reviewMap}
+            cmsReports={CMS.enabled ? cmsReports : null}
+            isCmsLoading={isCmsLoading}
+            cmsFetchError={cmsFetchError}
+            onRefresh={() => doFetch()}
           />
         ) : (
           <AdminView
@@ -297,9 +321,16 @@ export default function App() {
             {view === 'admin' && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-blue-700 rounded-full" />
             )}
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
+            <div className="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              {adminPendingCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-amber-400 text-amber-900 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {adminPendingCount > 9 ? '9+' : adminPendingCount}
+                </span>
+              )}
+            </div>
             <span className="text-xs font-medium">Admin</span>
           </button>
         )}

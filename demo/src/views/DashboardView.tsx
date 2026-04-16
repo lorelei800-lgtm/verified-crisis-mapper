@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
-import { fetchCmsReports } from '../services/cmsApi'
 import { CMS } from '../config'
 import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
@@ -13,67 +12,35 @@ interface Props {
   submittedReports?: DamageReport[]
   newReportIds?: Set<string>
   reviewMap?: ReviewMap
-  onNewCmsReports?: (count: number, reports: DamageReport[]) => void
-  onAllReportsChanged?: (reports: DamageReport[]) => void
+  // CMS data owned by App.tsx — single polling source to prevent double-refresh white screen
+  cmsReports?: DamageReport[] | null
+  isCmsLoading?: boolean
+  cmsFetchError?: string | null
+  onRefresh?: () => void
 }
 
-export default function DashboardView({ config, submittedReports = [], newReportIds = new Set(), reviewMap = {}, onNewCmsReports, onAllReportsChanged }: Props) {
-  const mapContainer        = useRef<HTMLDivElement>(null)
-  const mapRef              = useRef<maplibregl.Map | null>(null)
-  // Always-fresh ref used inside map click handlers (avoids stale closure)
-  const filteredReportsRef  = useRef<DamageReport[]>([])
+export default function DashboardView({
+  config,
+  submittedReports = [],
+  newReportIds = new Set(),
+  reviewMap = {},
+  cmsReports = null,
+  isCmsLoading = false,
+  cmsFetchError = null,
+  onRefresh,
+}: Props) {
+  const mapContainer       = useRef<HTMLDivElement>(null)
+  const mapRef             = useRef<maplibregl.Map | null>(null)
+  const filteredReportsRef = useRef<DamageReport[]>([])
+  const hasAutoFocusedRef  = useRef(false)
 
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
-  const [tierFilter, setTierFilter]         = useState<TrustTier | 'all'>('all')
-  const [mapReady, setMapReady]             = useState(false)
+  const [tierFilter,     setTierFilter]     = useState<TrustTier | 'all'>('all')
+  const [sortBy,         setSortBy]         = useState<'time' | 'score'>('time')
+  const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
 
-  // CMS fetch state
-  const [cmsReports,   setCmsReports]   = useState<DamageReport[] | null>(null)
-  const [cmsError,     setCmsError]     = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const refreshCms = () => {
-    if (!CMS.enabled) return
-    setCmsError(null)
-    setIsRefreshing(true)
-    fetchCmsReports()
-      .then(({ reports }) => setCmsReports(reports))
-      .catch(() => { setCmsError('Could not load CMS data'); setCmsReports([]) })
-      .finally(() => setIsRefreshing(false))
-  }
-
-  // Initial fetch
-  useEffect(() => { refreshCms() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-refresh every 30 seconds to pick up reports from other devices
-  useEffect(() => {
-    if (!CMS.enabled) return
-    const id = setInterval(refreshCms, 30_000)
-    return () => clearInterval(id)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Also refresh when this session submits a new report
-  const prevSubmittedCount = useRef(0)
-  useEffect(() => {
-    if (!CMS.enabled) return
-    if (submittedReports.length > prevSubmittedCount.current) {
-      prevSubmittedCount.current = submittedReports.length
-      setTimeout(refreshCms, 2000)   // short delay to let CMS index the new item
-    }
-  }, [submittedReports.length]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Notify parent when CMS reports increase (for admin push notifications)
-  const prevCmsCountRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (!onNewCmsReports || cmsReports === null) return
-    const prev = prevCmsCountRef.current
-    if (prev !== null && cmsReports.length > prev) {
-      onNewCmsReports(cmsReports.length - prev, cmsReports)
-    }
-    prevCmsCountRef.current = cmsReports.length
-  }, [cmsReports]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  // ── Data ──────────────────────────────────────────────────────────────────
   const baseReports = useMemo((): DamageReport[] => {
     if (CMS.enabled && cmsReports !== null) return cmsReports
     return mockReports
@@ -84,12 +51,6 @@ export default function DashboardView({ config, submittedReports = [], newReport
     return [...submittedReports, ...baseReports.filter(r => !sessionIds.has(r.id))]
   }, [submittedReports, baseReports])
 
-  // Keep parent's allKnownReports in sync (for AdminView)
-  useEffect(() => {
-    if (onAllReportsChanged) onAllReportsChanged(allReports)
-  }, [allReports]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Exclude rejected reports from everything visible on the dashboard
   const visibleReports = useMemo(
     () => allReports.filter(r => reviewMap[r.id] !== 'rejected'),
     [allReports, reviewMap]
@@ -108,14 +69,21 @@ export default function DashboardView({ config, submittedReports = [], newReport
     { label: `Red (${stats.red})`,             tier: 'red' as const },
   ], [visibleReports.length, stats])
 
-  const filteredReports = useMemo(
-    () => tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter),
-    [visibleReports, tierFilter]
-  )
+  const filteredReports = useMemo(() => {
+    const base = tierFilter === 'all' ? visibleReports : visibleReports.filter(r => r.tier === tierFilter)
+    return [...base].sort((a, b) =>
+      sortBy === 'score'
+        ? b.trustScore.total - a.trustScore.total
+        : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+  }, [visibleReports, tierFilter, sortBy])
+
   // Keep ref in sync so map click handlers always see the current list
   filteredReportsRef.current = filteredReports
 
-  // ── Map ─────────────────────────────────────────────────────────────────────
+  const isLoading = CMS.enabled && isCmsLoading && cmsReports === null
+
+  // ── Map init ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
     const bounds: maplibregl.LngLatBoundsLike = [
@@ -126,9 +94,16 @@ export default function DashboardView({ config, submittedReports = [], newReport
       container: mapContainer.current,
       style: {
         version: 8,
-        // Glyphs required for cluster count symbol layer
         glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-        sources: { 'esri-satellite': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics', maxzoom: 18 } },
+        sources: {
+          'esri-satellite': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+            maxzoom: 18,
+          },
+        },
         layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri-satellite' }],
       },
       bounds,
@@ -140,7 +115,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When CMS delivers a config different from defaults, re-fit the map bounds
+  // Re-fit bounds when config changes
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
@@ -150,10 +125,20 @@ export default function DashboardView({ config, submittedReports = [], newReport
     )
   }, [config, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── GeoJSON source + MapLibre GL cluster layers ───────────────────────────────
-  // Re-runs when filteredReports or reviewMap changes.
-  // First run: creates source + all layers + event handlers.
-  // Subsequent runs: just calls setData() to update the GeoJSON (no layer recreation needed).
+  // Auto-focus newest submitted report once when map first becomes ready
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || hasAutoFocusedRef.current) return
+    if (newReportIds.size === 0) return
+    const report = allReports.find(r => newReportIds.has(r.id))
+    if (!report) return
+    hasAutoFocusedRef.current = true
+    setTimeout(() => {
+      mapRef.current?.flyTo({ center: [report.lng, report.lat], zoom: 15 })
+      setSelectedReport(report)
+    }, 400)
+  }, [mapReady, allReports]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── GeoJSON source + cluster layers ──────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
@@ -161,88 +146,57 @@ export default function DashboardView({ config, submittedReports = [], newReport
     const features = filteredReports.map(report => ({
       type: 'Feature' as const,
       properties: {
-        id:       report.id,
-        color:    tierColors[report.tier].hex,
-        // 'approved' | 'pending' — used in paint expressions below
-        status:   reviewMap[report.id] === 'approved' ? 'approved' : 'pending',
+        id:     report.id,
+        color:  tierColors[report.tier].hex,
+        status: reviewMap[report.id] === 'approved' ? 'approved' : 'pending',
       },
       geometry: { type: 'Point' as const, coordinates: [report.lng, report.lat] },
     }))
     const geojson = { type: 'FeatureCollection' as const, features }
 
-    // ── Update-only path ──────────────────────────────────────────────────────
+    // Update-only path — source already exists
     const src = map.getSource('reports') as maplibregl.GeoJSONSource | undefined
     if (src) { src.setData(geojson); return }
 
-    // ── First-time setup: source + layers + event handlers ───────────────────
+    // First-time setup: source + layers + event handlers
     map.addSource('reports', {
-      type: 'geojson',
-      data: geojson,
-      cluster: true,
-      clusterMaxZoom: 12,   // stop clustering above zoom 12
-      clusterRadius: 45,
+      type: 'geojson', data: geojson,
+      cluster: true, clusterMaxZoom: 12, clusterRadius: 45,
     })
 
-    // Cluster background circles (graduated size & colour by count)
     map.addLayer({
-      id: 'clusters',
-      type: 'circle',
-      source: 'reports',
+      id: 'clusters', type: 'circle', source: 'reports',
       filter: ['has', 'point_count'],
       paint: {
-        'circle-color': [
-          'step', ['get', 'point_count'],
-          '#60a5fa', 5, '#3b82f6', 15, '#1d4ed8',
-        ],
-        'circle-radius': [
-          'step', ['get', 'point_count'], 16, 5, 22, 15, 28,
-        ],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
+        'circle-color': ['step', ['get', 'point_count'], '#60a5fa', 5, '#3b82f6', 15, '#1d4ed8'],
+        'circle-radius': ['step', ['get', 'point_count'], 16, 5, 22, 15, 28],
+        'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff',
       },
     })
 
-    // Cluster count label
     map.addLayer({
-      id: 'cluster-count',
-      type: 'symbol',
-      source: 'reports',
+      id: 'cluster-count', type: 'symbol', source: 'reports',
       filter: ['has', 'point_count'],
       layout: {
-        'text-field': '{point_count_abbreviated}',
-        'text-size': 11,
+        'text-field': '{point_count_abbreviated}', 'text-size': 11,
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
       },
       paint: { 'text-color': '#ffffff' },
     })
 
-    // Individual points — approved: filled; pending: hollow ring at reduced opacity
     map.addLayer({
-      id: 'points',
-      type: 'circle',
-      source: 'reports',
+      id: 'points', type: 'circle', source: 'reports',
       filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-color': [
-          'case',
-          ['==', ['get', 'status'], 'approved'], ['get', 'color'],
-          'rgba(255,255,255,0.08)',
-        ],
+        'circle-color': ['case', ['==', ['get', 'status'], 'approved'], ['get', 'color'], 'rgba(255,255,255,0.08)'],
         'circle-radius': 10,
-        'circle-stroke-width': [
-          'case', ['==', ['get', 'status'], 'approved'], 2.5, 2,
-        ],
+        'circle-stroke-width': ['case', ['==', ['get', 'status'], 'approved'], 2.5, 2],
         'circle-stroke-color': ['get', 'color'],
-        'circle-opacity': [
-          'case', ['==', ['get', 'status'], 'pending'], 0.6, 1.0,
-        ],
-        'circle-stroke-opacity': [
-          'case', ['==', ['get', 'status'], 'pending'], 0.75, 1.0,
-        ],
+        'circle-opacity': ['case', ['==', ['get', 'status'], 'pending'], 0.6, 1.0],
+        'circle-stroke-opacity': ['case', ['==', ['get', 'status'], 'pending'], 0.75, 1.0],
       },
     })
 
-    // ── Cluster click: zoom in to expand ─────────────────────────────────────
     map.on('click', 'clusters', async (e) => {
       const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
       if (!feats.length) return
@@ -254,7 +208,6 @@ export default function DashboardView({ config, submittedReports = [], newReport
       } catch { /* ignore */ }
     })
 
-    // ── Individual point click: show detail panel ─────────────────────────────
     map.on('click', 'points', (e) => {
       const feats = map.queryRenderedFeatures(e.point, { layers: ['points'] })
       if (!feats.length) return
@@ -263,30 +216,27 @@ export default function DashboardView({ config, submittedReports = [], newReport
       if (report) { setSelectedReport(report); setMobileListOpen(false) }
     })
 
-    // ── Cursor ────────────────────────────────────────────────────────────────
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
     map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = '' })
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isLoading = CMS.enabled && cmsReports === null
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col lg:flex-row" style={{ minHeight: 0 }}>
 
-      {/* ════════════ DESKTOP SIDEBAR (hidden on mobile) ════════════════════ */}
+      {/* ════════════ DESKTOP SIDEBAR ════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-80 bg-white border-r border-gray-200 flex-col overflow-hidden">
         <div className="p-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">{config.title}</h2>
             <div className="flex items-center gap-1.5">
-              <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+              <CmsBadge isLoading={isLoading} cmsError={cmsFetchError} />
               {CMS.enabled && (
-                <button onClick={refreshCms} title="Refresh" disabled={isRefreshing}
+                <button onClick={onRefresh} title="Refresh" disabled={isCmsLoading}
                   className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 disabled:opacity-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${isCmsLoading ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
@@ -298,7 +248,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
               +{submittedReports.length} report{submittedReports.length > 1 ? 's' : ''} this session
             </div>
           )}
-          {cmsError && <div className="mb-2 text-xs bg-red-50 border border-red-200 rounded px-2 py-1 text-red-600">{cmsError} — showing demo data</div>}
+          {cmsFetchError && <div className="mb-2 text-xs bg-red-50 border border-red-200 rounded px-2 py-1 text-red-600">{cmsFetchError} — showing demo data</div>}
           {isLoading ? (
             <div className="grid grid-cols-3 gap-2">
               {(['green','amber','red'] as TrustTier[]).map(t => (
@@ -319,7 +269,9 @@ export default function DashboardView({ config, submittedReports = [], newReport
             </div>
           )}
         </div>
-        <div className="p-3 border-b border-gray-100">
+
+        {/* Tier filter + sort */}
+        <div className="p-3 border-b border-gray-100 space-y-2">
           <div className="flex gap-1 flex-wrap">
             {tierFilters.map(f => (
               <button key={f.tier} onClick={() => setTierFilter(f.tier)}
@@ -330,7 +282,17 @@ export default function DashboardView({ config, submittedReports = [], newReport
                 }`}>{f.label}</button>
             ))}
           </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-400 shrink-0">Sort:</span>
+            {([['time', 'Newest'], ['score', 'Score ↓']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setSortBy(key)}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                  sortBy === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>{label}</button>
+            ))}
+          </div>
         </div>
+
         <div className="flex-1 overflow-y-auto">
           {isLoading ? Array.from({length:6}).map((_,i) => (
             <div key={i} className="px-3 py-2.5 border-b border-gray-100 animate-pulse">
@@ -346,9 +308,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
                 className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedReport?.id===report.id?'bg-blue-50':isNew?'bg-green-50':reviewed==='approved'?'bg-green-50/40':''}`}>
                 <div className="flex items-start gap-2">
                   <div className={`w-3 h-3 rounded-full mt-0.5 shrink-0 ${isPending ? 'border-2 border-dashed bg-transparent' : ''}`}
-                    style={isPending
-                      ? {borderColor: tierColors[report.tier].hex}
-                      : {backgroundColor: tierColors[report.tier].hex}}/>
+                    style={isPending ? {borderColor:tierColors[report.tier].hex} : {backgroundColor:tierColors[report.tier].hex}}/>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold text-gray-800 truncate">{report.id} {isNew&&<span className="text-green-600">★ New</span>}</span>
@@ -372,20 +332,20 @@ export default function DashboardView({ config, submittedReports = [], newReport
         </div>
       </div>
 
-      {/* ════════════ MAP (full screen on mobile) ═══════════════════════════ */}
+      {/* ════════════ MAP ═════════════════════════════════════════════════════ */}
       <div className="flex-1 relative" style={{ minHeight: '400px', minWidth: 0 }}>
         <div ref={mapContainer} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}}/>
 
-        {/* ── Mobile stats overlay (hidden on desktop) ── */}
+        {/* ── Mobile stats overlay ── */}
         <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md p-2.5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-700">{config.title}</span>
             <div className="flex items-center gap-1.5">
-              <CmsBadge isLoading={isLoading} cmsError={cmsError} />
+              <CmsBadge isLoading={isLoading} cmsError={cmsFetchError} />
               {CMS.enabled && (
-                <button onClick={refreshCms} title="Refresh" disabled={isRefreshing}
+                <button onClick={onRefresh} title="Refresh" disabled={isCmsLoading}
                   className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 disabled:opacity-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 ${isCmsLoading ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
@@ -423,15 +383,11 @@ export default function DashboardView({ config, submittedReports = [], newReport
           ))}
           <div className="border-t border-gray-100 mt-1.5 pt-1.5 space-y-0.5">
             <div className="flex items-center gap-1.5 py-0.5">
-              <div className="w-3 h-3 rounded-full bg-white border-2 border-dashed border-gray-400 flex items-center justify-center">
-                <span className="text-[6px] text-gray-400 font-bold leading-none">?</span>
-              </div>
-              <span className="text-gray-400">Unverified · Trust Score pending</span>
+              <div className="w-3 h-3 rounded-full bg-white border-2 border-dashed border-gray-400"/>
+              <span className="text-gray-400">Unverified</span>
             </div>
             <div className="flex items-center gap-1.5 py-0.5">
-              <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white flex items-center justify-center">
-                <span className="text-[6px] text-white font-bold leading-none">✓</span>
-              </div>
+              <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white"/>
               <span className="text-gray-600">Admin Verified</span>
             </div>
           </div>
@@ -477,33 +433,48 @@ export default function DashboardView({ config, submittedReports = [], newReport
           </div>
         )}
 
-        {/* ── Mobile: report list bottom sheet (hidden on desktop) ── */}
+        {/* ── Mobile: report list bottom sheet ── */}
         {!selectedReport && (
           <div className="lg:hidden absolute bottom-0 left-0 right-0 z-20">
-            {/* Handle bar — always visible */}
             <button onClick={() => setMobileListOpen(!mobileListOpen)}
               className="w-full h-12 bg-white border-t border-gray-200 rounded-t-2xl flex items-center justify-between px-4 shadow-lg">
               <span className="text-sm font-semibold text-gray-700">
                 {isLoading ? 'Loading reports…' : `${filteredReports.length} report${filteredReports.length !== 1 ? 's' : ''}`}
               </span>
-              <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${mobileListOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/>
-              </svg>
+              {/* Mobile sort toggle inside handle */}
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {([['time', '🕐'], ['score', '↓']] as const).map(([key, icon]) => (
+                    <button key={key} onClick={e => { e.stopPropagation(); setSortBy(key) }}
+                      className={`w-6 h-6 rounded text-[10px] font-bold transition-colors ${sortBy === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${mobileListOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/>
+                </svg>
+              </div>
             </button>
-            {/* Collapsible list — max-height transition avoids overflow-hidden clipping */}
             <div className={`bg-white overflow-y-auto transition-all duration-300 ${mobileListOpen ? 'max-h-60' : 'max-h-0 overflow-hidden'}`}>
               {filteredReports.map(report => {
-                const isNew = newReportIds.has(report.id)
+                const isNew    = newReportIds.has(report.id)
+                const reviewed = reviewMap[report.id]
                 return (
                   <button key={report.id}
                     onClick={() => { setSelectedReport(report); setMobileListOpen(false); mapRef.current?.flyTo({center:[report.lng,report.lat],zoom:14}) }}
                     className={`w-full text-left px-4 py-3 border-b border-gray-100 active:bg-gray-50 ${isNew?'bg-green-50':''}`}>
                     <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{backgroundColor:tierColors[report.tier].hex}}/>
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${!reviewed ? 'border-2 border-dashed bg-transparent' : ''}`}
+                        style={!reviewed ? {borderColor:tierColors[report.tier].hex} : {backgroundColor:tierColors[report.tier].hex}}/>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-semibold text-gray-800">{report.id} {isNew&&<span className="text-green-600 text-xs">★ New</span>}</span>
-                          <span className="text-sm font-bold ml-2 shrink-0" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
+                          <div className="flex items-center gap-1 ml-2 shrink-0">
+                            {reviewed === 'approved' && <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1 rounded">✓</span>}
+                            {!reviewed && <span className="text-[9px] text-gray-400 bg-gray-100 px-1 rounded">Unverified</span>}
+                            <span className="text-sm font-bold" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
                         <div className="text-[10px] text-gray-400">{formatDate(report.timestamp)}</div>
@@ -516,10 +487,9 @@ export default function DashboardView({ config, submittedReports = [], newReport
           </div>
         )}
 
-        {/* ── Mobile: selected report bottom sheet (hidden on desktop) ── */}
+        {/* ── Mobile: selected report bottom sheet ── */}
         {selectedReport && (
           <div className="lg:hidden absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-2xl shadow-2xl overflow-hidden" style={{maxHeight:'72%'}}>
-            {/* Handle + header */}
             <div className={`px-4 py-3 flex items-center justify-between ${tierColors[selectedReport.tier].bg}`}>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full text-white text-sm font-bold flex items-center justify-center shrink-0"
@@ -536,11 +506,11 @@ export default function DashboardView({ config, submittedReports = [], newReport
                   ? <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full">✓ Verified</span>
                   : <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Unverified</span>
                 }
+                {/* Close: re-opens the list so user can switch reports without extra taps */}
                 <button onClick={() => { setSelectedReport(null); setMobileListOpen(true) }}
                   className="w-8 h-8 rounded-full bg-white bg-opacity-40 flex items-center justify-center text-gray-600 text-sm">✕</button>
               </div>
             </div>
-            {/* Scrollable content */}
             <div className="overflow-y-auto" style={{maxHeight:'calc(72vh - 60px)'}}>
               {selectedReport.imageUrl && (
                 <img src={selectedReport.imageUrl} alt="damage photo" className="w-full h-48 object-cover"
@@ -569,7 +539,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
   )
 }
 
-// ── Shared helpers ───────────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
 function CmsBadge({ isLoading, cmsError }: { isLoading: boolean; cmsError: string | null }) {
   if (!CMS.enabled) return <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">Demo data</span>
@@ -612,13 +582,22 @@ function MiniBar({ label, value, max, color }: { label: string; value: number; m
   )
 }
 
+/** Locale-independent date formatter — avoids "Invalid Date" on mobile browsers */
 function formatDate(iso: string): string {
+  if (!iso) return '—'
   try {
-    const d = new Date(iso)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      + ' · '
-      + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    // Normalise common non-ISO formats returned by some CMS backends
+    const normalized = iso
+      .replace(' ', 'T')           // "2026-04-16 12:34" → "2026-04-16T12:34"
+      .replace(' +0000 UTC', 'Z')  // Go time.RFC3339 suffix
+      .replace(' UTC', 'Z')
+    const d = new Date(normalized)
+    if (isNaN(d.getTime())) return '—'
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${hh}:${mm}`
   } catch {
-    return iso
+    return '—'
   }
 }
