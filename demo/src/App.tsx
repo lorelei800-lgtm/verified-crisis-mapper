@@ -76,6 +76,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    console.info('[CMS] config — enabled:', CMS.enabled, 'writable:', CMS.writable)
     if (!CMS.enabled) return
     doFetch(true)
     const id = setInterval(() => doFetch(), 30_000)
@@ -129,8 +130,11 @@ export default function App() {
     setReviewMap(prev => ({ ...prev, [id]: status }))
     // Write back to CMS so other devices see the change
     const report = allKnownReports.find(r => r.id === id)
+    console.info('[Admin] handleReview', id, status, 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
     if (report?.cmsId) {
-      updateReviewStatus(report.cmsId, status)
+      updateReviewStatus(report.cmsId, status).then(ok => {
+        if (!ok) console.warn('[Admin] review write-back failed — check VITE_CMS_TOKEN secret in GitHub')
+      })
     } else {
       console.warn('[Admin] no cmsId for report', id, '— review not synced to CMS')
     }
