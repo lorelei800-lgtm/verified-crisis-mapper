@@ -9,23 +9,7 @@ import AdminView from './views/AdminView'
 
 type View = 'reporter' | 'dashboard' | 'admin'
 
-const STORAGE_KEY = 'vcm_submitted_reports'
 const REVIEW_KEY  = 'vcm_review_status'
-
-function loadStoredReports(): DamageReport[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as DamageReport[]
-    // Drop blob URLs — they don't survive page reload
-    return parsed.map(r => ({
-      ...r,
-      imageUrl: r.imageUrl?.startsWith('blob:') ? undefined : r.imageUrl,
-    }))
-  } catch {
-    return []
-  }
-}
 
 function loadReviewMap(): ReviewMap {
   try {
@@ -38,7 +22,9 @@ function loadReviewMap(): ReviewMap {
 
 export default function App() {
   const [view, setView]                     = useState<View>('reporter')
-  const [submittedReports, setSubmittedReports] = useState<DamageReport[]>(loadStoredReports)
+  // Start empty every session — CMS is the source of truth across devices.
+  // Submitted reports appear immediately in this session only (not loaded from localStorage).
+  const [submittedReports, setSubmittedReports] = useState<DamageReport[]>([])
   const [config, setConfig]                 = useState<DeploymentConfig>(DEFAULT_CONFIG)
   const [unseenCount, setUnseenCount]       = useState(0)
   const [newReportIds, setNewReportIds]     = useState<Set<string>>(new Set())
@@ -54,7 +40,7 @@ export default function App() {
     logoTapCount.current += 1
     if (logoTapTimer.current) clearTimeout(logoTapTimer.current)
     logoTapTimer.current = setTimeout(() => { logoTapCount.current = 0 }, 2000)
-    if (logoTapCount.current >= 5) {
+    if (logoTapCount.current >= 3) {
       logoTapCount.current = 0
       setView('admin')
       if ('Notification' in window && Notification.permission === 'default') {
@@ -94,11 +80,6 @@ export default function App() {
     const sessionIds = new Set(submittedReports.map(r => r.id))
     return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
   }, [cmsReports, submittedReports])
-
-  // Persist submitted reports to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(submittedReports))
-  }, [submittedReports])
 
   // Persist review map
   useEffect(() => {
