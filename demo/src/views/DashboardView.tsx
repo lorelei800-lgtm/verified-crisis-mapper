@@ -536,7 +536,7 @@ export default function DashboardView({ config, submittedReports = [], newReport
                   ? <span className="text-[10px] font-bold text-green-700 bg-green-200 px-1.5 py-0.5 rounded-full">✓ Verified</span>
                   : <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Unverified</span>
                 }
-                <button onClick={() => setSelectedReport(null)}
+                <button onClick={() => { setSelectedReport(null); setMobileListOpen(true) }}
                   className="w-8 h-8 rounded-full bg-white bg-opacity-40 flex items-center justify-center text-gray-600 text-sm">✕</button>
               </div>
             </div>

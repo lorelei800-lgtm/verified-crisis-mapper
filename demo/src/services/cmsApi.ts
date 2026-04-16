@@ -18,16 +18,16 @@ import { getTier } from '../utils/trustScore'
 // ─── Deployment defaults ─────────────────────────────────────────────────────
 
 export const DEFAULT_CONFIG: DeploymentConfig = {
-  title:           'Bangkok Flood Response',
-  scenario_label:  'Bangkok Flood, October 2026',
-  subtitle:        'Don Mueang / Pathum Thani',
-  bounds_sw_lat:   13.76,
-  bounds_sw_lng:   100.49,
-  bounds_ne_lat:   14.07,
-  bounds_ne_lng:   100.65,
-  area_center_lat: 13.9051,
-  area_center_lng: 100.5988,
-  area_radius_km:  25,
+  title:           'Tokyo Flood Response',
+  scenario_label:  'Tokyo Flood, Kanda River Basin, October 2026',
+  subtitle:        'Chiyoda / Kanda',
+  bounds_sw_lat:   35.64,
+  bounds_sw_lng:   139.70,
+  bounds_ne_lat:   35.74,
+  bounds_ne_lng:   139.79,
+  area_center_lat: 35.6940,
+  area_center_lng: 139.7534,
+  area_radius_km:  5,
 }
 
 // ─── CMS response shapes ────────────────────────────────────────────────────

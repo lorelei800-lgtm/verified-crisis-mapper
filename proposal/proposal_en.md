@@ -92,9 +92,10 @@ The critical design insight from historical precedent (Haiti 2010 SMS "4636"[^6]
 
 *Fig. 2 — In the reporting window (2–72 hours post-disaster), a resident photographs damage with GPS auto-tagged. An emergency van broadcasts the URL via SMS to reach residents without prior PWA installation.*
 
-Two access routes:
+Three access routes:
 - **Route A (pre-installed PWA):** Tap home screen icon → camera launches → GPS auto-captures → 3-tap form completion → data queued for sync. Zero network dependency during entry.
 - **Route B (first-time access):** Emergency responders broadcast the URL via SMS blast, radio, or shelter signage. Residents with restored connectivity access the form via browser.
+- **Route C (WhatsApp Business API bot):** For residents who will not install an app and do not have a browser link, a WhatsApp bot accepts photo + location + damage description via familiar chat interface. The bot normalises submissions into the same CMS schema as Routes A/B — all three routes feed the same Trust Score pipeline and map.
 
 Offline resilience: Background Sync API queues submissions locally; data transmits automatically when connectivity returns — no user action required.
 
@@ -176,14 +177,16 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 At the time of proposal submission, the following components are operational and demonstrable via live URL:
 
 **Live demo:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
+*(Scenario: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
 
-- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS capture, damage classification, and real-time Trust Score result display
-- **Operator Dashboard:** React + MapLibre GL JS satellite map with 28 color-coded reports (Bangkok flood scenario), tier filtering, and per-report Trust Score breakdown
-- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors
-- **Form → Map integration:** Reports submitted via the PWA appear live on the dashboard map
-- **Re:Earth CMS:** Damage report schema with trust_score fields — backend for production deployment
+- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification, and real-time Trust Score result display. Operates without GPS (graceful degradation with user guidance).
+- **Operator Dashboard:** React + MapLibre GL JS satellite map with 30+ color-coded reports (Tokyo flood scenario), zoom-adaptive marker clustering (individual pins at zoom ≥ 12; cluster count badges at lower zoom), tier filtering, and per-report Trust Score breakdown.
+- **Admin Review Panel:** PIN-authenticated government operator view — approve/reject individual reports with Trust Score and photo inspection. Approved reports display a verified badge (✓); rejected reports are removed from the public dashboard.
+- **Cross-Device Real-Time Sync:** Review decisions (approve/reject) are written back to Re:Earth CMS and propagate to all connected devices within 30 seconds. Report submissions from any device appear on all dashboards in real time.
+- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors.
+- **Re:Earth CMS:** Damage report schema with trust_score, tier, review_status, and image asset fields — production-ready backend for multi-device, multi-operator deployment.
 
-> **Implementation note:** Full Trust Score engine implementation (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection. The prototype demonstrates the complete user journey and data model — the verification layer is architected and documented, using simulated scoring for the prototype demo.
+> **TRL Status:** TRL 4–5 at submission. Core data collection, verification pipeline, and multi-device operator workflow are functional. Full Trust Score engine (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection.
 
 ---
 

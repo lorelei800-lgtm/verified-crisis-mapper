@@ -26,6 +26,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const [damageLevel, setDamageLevel]   = useState<DamageLevel | ''>('')
   const [infraType, setInfraType]       = useState<InfraType | ''>('')
   const [landmark, setLandmark]         = useState('')
+  const [district, setDistrict]         = useState('')
   const [channel]                       = useState<SubmissionChannel>('pwa')
   const [gpsStatus, setGpsStatus]       = useState<'idle' | 'acquiring' | 'acquired' | 'error'>('idle')
   const [gpsAccuracy, setGpsAccuracy]   = useState<number>(50)
@@ -73,7 +74,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
         setGpsAccuracy(accuracy)
         setGpsStatus('acquired')
 
-        // Reverse geocoding — auto-fill landmark if empty
+        // Reverse geocoding — auto-fill landmark and district
         try {
           setGeocoding(true)
           const res = await fetch(
@@ -82,8 +83,31 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
           )
           const data = await res.json()
           const addr = data.address ?? {}
-          const name = addr.road ?? addr.suburb ?? addr.city_district ?? addr.town ?? addr.city ?? data.display_name?.split(',')[0] ?? ''
-          if (name) setLandmark(name)
+
+          // Landmark: prefer specific named places over generic road names
+          // Priority: specific amenity/building → neighbourhood → suburb → quarter → city_district → road
+          const landmark =
+            addr.amenity        ??   // hospital, school, park, etc.
+            addr.building       ??   // named building
+            addr.neighbourhood  ??   // 丁目-level for JP; borough sub-area elsewhere
+            addr.quarter        ??   // local quarter
+            addr.suburb         ??   // suburb or 町
+            addr.city_district  ??   // 区 level (Chiyoda-ku, etc.)
+            addr.road           ??   // street name (last resort)
+            addr.town           ??
+            addr.city           ??
+            data.display_name?.split(',')[0] ?? ''
+
+          // District: administrative division (ward / borough / county)
+          const district =
+            addr.city_district  ??   // 千代田区
+            addr.borough        ??
+            addr.county         ??
+            addr.state_district ??
+            ''
+
+          if (landmark) setLandmark(landmark)
+          if (district) setDistrict(district)
         } catch {
           // geocoding failure is non-critical
         } finally {
@@ -158,7 +182,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
       damageLevel: damageLevel as DamageLevel,
       infraType:   infraType  as InfraType,
       landmark:   landmark || `${config.subtitle} (demo GPS)`,
-      district:   config.subtitle.split('/')[0].trim(),
+      district:   district || config.subtitle.split('/')[0].trim(),
       timestamp:  new Date().toISOString(),
       channel,
       trustScore: score,
@@ -197,6 +221,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     setGpsLng(0)
     setInArea(true)
     setGeocoding(false)
+    setDistrict('')
     setTrustResult(null)
     setFinalImageUrl(null)
     setResultHasC2PA(false)
@@ -444,8 +469,17 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
               Enter a landmark below to help responders locate the site.
             </div>
           )}
+          {district && gpsStatus === 'acquired' && (
+            <div className="mb-2 flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span>District: <strong>{district}</strong> · auto-detected from GPS</span>
+            </div>
+          )}
           <input type="text" value={landmark} onChange={e => setLandmark(e.target.value)}
-            placeholder="Landmark / street name (backup if no GPS)"
+            placeholder="Landmark / street name (e.g. Kanda River Bridge)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
         </section>
 
