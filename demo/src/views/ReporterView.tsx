@@ -1,20 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 import type { DamageLevel, InfraType, SubmissionChannel, DamageReport, DeploymentConfig } from '../types'
-import { calculateDemoTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
+import { calculateTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 import { uploadAsset, createReportItem } from '../services/cmsApi'
-import { isWithinArea } from '../utils/geo'
+import { isWithinArea, haversineKm } from '../utils/geo'
+import { enqueueReport } from '../services/offlineQueue'
 import { CMS } from '../config'
 
 interface Props {
   config: DeploymentConfig
   onViewDashboard: () => void
   onNewReport: (report: DamageReport) => void
+  existingReports?: DamageReport[]   // for cross-report validation
+  isOnline?: boolean
 }
 
 type FormStep    = 'form' | 'submitting' | 'result'
 type SubmitPhase = 'scoring' | 'analyzing' | 'done'
-type CmsSyncStatus = 'idle' | 'syncing' | 'synced' | 'error'
+type CmsSyncStatus = 'idle' | 'syncing' | 'synced' | 'queued' | 'error'
 
 interface NominatimResult {
   place_id: number
@@ -24,7 +27,7 @@ interface NominatimResult {
   address?: Record<string, string | undefined>
 }
 
-export default function ReporterView({ config, onViewDashboard, onNewReport }: Props) {
+export default function ReporterView({ config, onViewDashboard, onNewReport, existingReports = [], isOnline: isOnlineProp }: Props) {
   const [step, setStep]               = useState<FormStep>('form')
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('scoring')
 
@@ -51,15 +54,24 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Result state
-  const [trustResult, setTrustResult]       = useState<ReturnType<typeof calculateDemoTrustScore> | null>(null)
+  const [trustResult, setTrustResult]       = useState<ReturnType<typeof calculateTrustScore> | null>(null)
   const [finalImageUrl, setFinalImageUrl]   = useState<string | null>(null)
   const [resultHasC2PA, setResultHasC2PA]   = useState(false)
   const [aiResult, setAiResult]             = useState<'authentic' | 'suspicious' | null>(null)
   const [cmsError, setCmsError]             = useState<string | null>(null)
   const [cmsSyncStatus, setCmsSyncStatus]   = useState<CmsSyncStatus>('idle')
 
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [isOnlineLocal, setIsOnlineLocal] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const isOnline = isOnlineProp !== undefined ? isOnlineProp : isOnlineLocal
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Low-bandwidth mode: compress photos smaller, hide GPS iframe
+  // Default ON — optimised for disaster field conditions.
+  // Persists to localStorage so the user's choice survives page reload.
+  const [lowBandwidth, setLowBandwidth] = useState<boolean>(() => {
+    const saved = localStorage.getItem('vcm_low_bandwidth')
+    return saved !== null ? saved === 'true' : true   // default ON
+  })
 
   const fileRef   = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -90,12 +102,17 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
 
   // ── Online/offline listener ────────────────────────────────────────────────
   useEffect(() => {
-    const up   = () => setIsOnline(true)
-    const down = () => setIsOnline(false)
+    const up   = () => setIsOnlineLocal(true)
+    const down = () => setIsOnlineLocal(false)
     window.addEventListener('online',  up)
     window.addEventListener('offline', down)
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
   }, [])
+
+  // ── Persist low-bandwidth preference ──────────────────────────────────────
+  useEffect(() => {
+    localStorage.setItem('vcm_low_bandwidth', String(lowBandwidth))
+  }, [lowBandwidth])
 
   const handleSelectLocation = (result: NominatimResult) => {
     const lat = parseFloat(result.lat)
@@ -120,7 +137,10 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>, source: 'camera' | 'library') => {
     const file = e.target.files?.[0]
     if (!file) return
-    const compressed = await compressImage(file)
+    // Low-bandwidth: 640px / 60% quality (~150KB) vs standard 1280px / 82% (~400KB)
+    const compressed = lowBandwidth
+      ? await compressImage(file, 640, 0.60)
+      : await compressImage(file, 1280, 0.82)
     setPhotoFile(compressed)
     setPhotoPreview(URL.createObjectURL(compressed))
     setPhotoSource(source)
@@ -179,15 +199,31 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     setCmsError(null)
     setCmsSyncStatus('idle')
 
-    const c2pa  = photoSource === 'camera' && !!photoFile
-    const score = calculateDemoTrustScore({
-      hasPhoto:    !!photoPreview,
-      hasGps:      gpsStatus === 'acquired',
+    const c2pa = photoSource === 'camera' && !!photoFile
+
+    // Cross-report validation: find reports within 500m of this submission
+    const submitLat = gpsStatus === 'acquired' ? gpsLat : config.area_center_lat
+    const submitLng = gpsStatus === 'acquired' ? gpsLng : config.area_center_lng
+    const nearbyReports = existingReports.filter(r =>
+      haversineKm(submitLat, submitLng, r.lat, r.lng) <= 0.5
+    )
+    const nearbyMatchingDamage = nearbyReports.filter(r =>
+      r.damageLevel === (damageLevel as DamageLevel)
+    )
+
+    const score = calculateTrustScore({
+      hasPhoto:                 !!photoPreview,
+      photoSource:              photoSource,
+      hasC2PA:                  c2pa,
+      aiAuthentic:              true,
+      hasGps:                   gpsStatus === 'acquired',
       gpsAccuracy,
+      isInArea:                 gpsStatus === 'acquired' ? inArea : true,
       channel,
-      isInArea:    gpsStatus === 'acquired' ? inArea : true,
-      hasC2PA:     c2pa,
-      aiAuthentic: true,
+      hasLandmark:              landmark.trim().length > 0,
+      hasDistrict:              district.trim().length > 0,
+      nearbyReportCount:        nearbyReports.length,
+      nearbyMatchingDamageCount: nearbyMatchingDamage.length,
     })
 
     await sleep(50)
@@ -227,7 +263,16 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
     // Notify parent (safe — iOS Safari Notification API can throw inside handleNewReport)
     try { onNewReport(newReport) } catch (err) { console.warn('[submit] onNewReport threw:', err) }
 
-    // CMS upload + save in background (non-blocking)
+    // ── Offline path: queue to IndexedDB, sync when back online ──
+    if (!isOnline) {
+      setCmsSyncStatus('queued')
+      try { await enqueueReport(newReport, photoFile) } catch (err) {
+        console.warn('[offlineQueue] enqueue failed', err)
+      }
+      return
+    }
+
+    // ── Online path: CMS upload + save in background (non-blocking) ──
     if (CMS.writable) {
       setCmsSyncStatus('syncing')
       ;(async () => {
@@ -364,7 +409,13 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
         {CMS.writable && (
           <div className="w-full text-center text-xs text-gray-400">
             {cmsSyncStatus === 'syncing' && <span className="animate-pulse">⟳ Saving to Re:Earth CMS…</span>}
-            {cmsSyncStatus === 'synced'  && '✓ Saved to Re:Earth CMS · visible on dashboard'}
+            {cmsSyncStatus === 'synced'  && <span className="text-green-600">✓ Saved to Re:Earth CMS · visible on dashboard</span>}
+            {cmsSyncStatus === 'queued'  && (
+              <span className="text-orange-600 flex items-center justify-center gap-1.5">
+                <span>📵</span>
+                <span>Offline — report queued, will sync when connection returns</span>
+              </span>
+            )}
             {cmsSyncStatus === 'error'   && <span className="text-yellow-600">⚠ {cmsError}</span>}
           </div>
         )}
@@ -401,8 +452,24 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
   return (
     <div className="flex-1 max-w-md mx-auto w-full p-4 overflow-y-auto">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
-        <strong>Scenario:</strong> {config.scenario_label} · {config.subtitle}
-        {CMS.writable && <span className="ml-2 text-blue-500">· Reports saved to Re:Earth CMS</span>}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span>
+            <strong>Scenario:</strong> {config.scenario_label} · {config.subtitle}
+            {CMS.writable && <span className="ml-2 text-blue-500">· Saved to CMS</span>}
+          </span>
+          <button
+            type="button"
+            onClick={() => setLowBandwidth(v => !v)}
+            title={lowBandwidth ? 'Low-Bandwidth Mode ON — tap for Enhanced Mode' : 'Enhanced Mode ON — tap for Low-Bandwidth Mode'}
+            className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+              lowBandwidth
+                ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                : 'bg-blue-100 text-blue-700 border border-blue-200'
+            }`}>
+            <span>{lowBandwidth ? '📡' : '✦'}</span>
+            {lowBandwidth ? 'Low BW' : 'Enhanced'}
+          </button>
+        </div>
       </div>
 
       {gpsStatus === 'acquired' && !inArea && (
@@ -519,8 +586,8 @@ export default function ReporterView({ config, onViewDashboard, onNewReport }: P
             </div>
           )}
 
-          {/* GPS mini-map preview */}
-          {gpsStatus === 'acquired' && (
+          {/* GPS mini-map preview (hidden in low-bandwidth mode) */}
+          {gpsStatus === 'acquired' && !lowBandwidth && (
             <div className="mb-3 rounded-xl overflow-hidden border border-gray-200 shadow-sm" style={{height: 130}}>
               <iframe
                 src={`https://www.openstreetmap.org/export/embed.html?bbox=${gpsLng-0.006},${gpsLat-0.005},${gpsLng+0.006},${gpsLat+0.005}&layer=mapnik&marker=${gpsLat},${gpsLng}`}

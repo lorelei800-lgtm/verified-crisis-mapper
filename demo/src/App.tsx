@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import type { DamageReport, DeploymentConfig, ReviewMap, ReviewStatus } from './types'
-import { fetchDeploymentConfig, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG } from './services/cmsApi'
+import { fetchDeploymentConfig, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG, uploadAsset, createReportItem } from './services/cmsApi'
+import { getAllQueued, removeQueued, incrementAttempts, countQueued } from './services/offlineQueue'
 import { CMS } from './config'
 import { mockReports } from './data/mockReports'
 import ReporterView from './views/ReporterView'
-import DashboardView from './views/DashboardView'
-import AdminView from './views/AdminView'
+const DashboardView = lazy(() => import('./views/DashboardView'))
+const AdminView     = lazy(() => import('./views/AdminView'))
 
 type View = 'reporter' | 'dashboard' | 'admin'
 
@@ -33,6 +34,8 @@ export default function App() {
   const [isCmsLoading, setIsCmsLoading]     = useState(true)
   const [cmsFetchError, setCmsFetchError]   = useState<string | null>(null)
   const [adminAuthed, setAdminAuthed]       = useState(false)
+  const [pendingOfflineCount, setPendingOfflineCount] = useState(0)
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
 
   // Secret tap counter: tap VCM logo 5 times to open Admin
   const logoTapCount = useRef(0)
@@ -115,6 +118,52 @@ export default function App() {
     }
   }, [])
 
+  // ── Offline detection & queue sync ────────────────────────────────────────
+  useEffect(() => {
+    // Check initial queue count
+    countQueued().then(setPendingOfflineCount).catch(() => {})
+
+    const goOnline = async () => {
+      setIsOnline(true)
+      // Process offline queue
+      try {
+        const items = await getAllQueued()
+        if (items.length === 0) return
+        console.info(`[offlineQueue] processing ${items.length} queued reports`)
+        for (const item of items) {
+          if (item.attempts >= 3) continue   // give up after 3 failures
+          try {
+            await incrementAttempts(item.queueId)
+            let assetId: string | undefined
+            if (item.photo) {
+              const file  = new File([item.photo], 'damage.jpg', { type: 'image/jpeg' })
+              const asset = await uploadAsset(file)
+              if (asset) assetId = asset.id
+            }
+            const cmsId = await createReportItem(item.report, assetId)
+            if (cmsId) {
+              await removeQueued(item.queueId)
+              setPendingOfflineCount(prev => Math.max(0, prev - 1))
+            }
+          } catch (err) {
+            console.warn('[offlineQueue] sync failed for', item.queueId, err)
+          }
+        }
+      } catch (err) {
+        console.warn('[offlineQueue] processing error', err)
+      }
+    }
+
+    const goOffline = () => setIsOnline(false)
+
+    window.addEventListener('online',  goOnline)
+    window.addEventListener('offline', goOffline)
+    return () => {
+      window.removeEventListener('online',  goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fireNotification = (title: string, body: string) => {
     if (!('Notification' in window)) return
     if (Notification.permission === 'granted') {
@@ -174,6 +223,11 @@ export default function App() {
             <div className="min-w-0">
               <div className="font-semibold text-sm leading-tight truncate">Verified Crisis Mapper</div>
               <div className="text-blue-300 text-xs leading-tight truncate">{config.scenario_label}</div>
+              {pendingOfflineCount > 0 && (
+                <div className="text-[10px] text-orange-300 leading-tight">
+                  📵 {pendingOfflineCount} report{pendingOfflineCount > 1 ? 's' : ''} queued offline
+                </div>
+              )}
             </div>
           </div>
 
@@ -243,33 +297,41 @@ export default function App() {
       {/* ── Main content ────────────────────────────────────────────────────── */}
       {/* pb-16 on mobile keeps content above the bottom nav bar */}
       <main className="flex-1 flex flex-col lg:pb-0 pb-16 overflow-hidden" style={{ minHeight: 0 }}>
-        {view === 'reporter' ? (
-          <ReporterView
-            config={config}
-            onViewDashboard={() => setView('dashboard')}
-            onNewReport={handleNewReport}
-          />
-        ) : view === 'dashboard' ? (
-          <DashboardView
-            config={config}
-            submittedReports={submittedReports}
-            newReportIds={newReportIds}
-            reviewMap={reviewMap}
-            cmsReports={CMS.enabled ? cmsReports : null}
-            isCmsLoading={isCmsLoading}
-            cmsFetchError={cmsFetchError}
-            onRefresh={() => doFetch()}
-          />
-        ) : (
-          <AdminView
-            reports={allKnownReports}
-            reviewMap={reviewMap}
-            onReview={handleReview}
-            isAuthed={adminAuthed}
-            onAuthSuccess={() => setAdminAuthed(true)}
-            onLogout={() => { setAdminAuthed(false); setView('reporter') }}
-          />
-        )}
+        <Suspense fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          {view === 'reporter' ? (
+            <ReporterView
+              config={config}
+              onViewDashboard={() => setView('dashboard')}
+              onNewReport={handleNewReport}
+              existingReports={CMS.enabled ? cmsReports : mockReports}
+              isOnline={isOnline}
+            />
+          ) : view === 'dashboard' ? (
+            <DashboardView
+              config={config}
+              submittedReports={submittedReports}
+              newReportIds={newReportIds}
+              reviewMap={reviewMap}
+              cmsReports={CMS.enabled ? cmsReports : null}
+              isCmsLoading={isCmsLoading}
+              cmsFetchError={cmsFetchError}
+              onRefresh={() => doFetch()}
+            />
+          ) : (
+            <AdminView
+              reports={allKnownReports}
+              reviewMap={reviewMap}
+              onReview={handleReview}
+              isAuthed={adminAuthed}
+              onAuthSuccess={() => setAdminAuthed(true)}
+              onLogout={() => { setAdminAuthed(false); setView('reporter') }}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* ── Mobile bottom nav (hidden on lg+) ──────────────────────────────── */}
