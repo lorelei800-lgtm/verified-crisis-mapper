@@ -249,6 +249,7 @@ export async function createReportItem(
   }
 
   try {
+    // Step 1: Create the item
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -256,21 +257,45 @@ export async function createReportItem(
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({ fields, status: 'public' }),
+      body: JSON.stringify({ fields }),
     })
     if (!res.ok) {
       const errBody = await res.text().catch(() => '')
       console.warn(`[CMS] createReportItem ${res.status}:`, errBody)
       throw new Error(`${res.status} ${res.statusText}`)
     }
-    // 204 No Content = created with no body; parse only if body exists
-    if (res.status === 204 || res.headers.get('content-length') === '0') {
-      return 'created'
+
+    // Parse item ID from response (needed for publish step)
+    let itemId: string | null = null
+    if (res.status !== 204 && res.headers.get('content-length') !== '0') {
+      const text = await res.text()
+      if (text) {
+        const data = JSON.parse(text) as { id?: string }
+        itemId = data.id ?? null
+      }
     }
-    const text = await res.text()
-    if (!text) return 'created'
-    const data = JSON.parse(text) as { id?: string }
-    return data.id ?? 'created'
+
+    // Step 2: Publish the item so it appears in the public read API
+    if (itemId) {
+      const publishUrl = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items/${itemId}`
+      const pubRes = await fetch(publishUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization:  `Bearer ${CMS.token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({ status: 'public' }),
+      })
+      if (!pubRes.ok) {
+        const errBody = await pubRes.text().catch(() => '')
+        console.warn(`[CMS] publishItem ${pubRes.status}:`, errBody)
+      } else {
+        console.info('[CMS] item published:', itemId)
+      }
+    }
+
+    return itemId ?? 'created'
   } catch (err) {
     console.warn('[CMS] createReportItem failed', err)
     return null
