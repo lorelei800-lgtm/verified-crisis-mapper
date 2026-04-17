@@ -1,6 +1,6 @@
 # Verified Crisis Mapper
 
-**An AI-Resilient, Trust-Scored Community Damage Reporting Platform**  
+**A Trust-Scored Community Damage Reporting Platform with Built-In Disinformation Defense**  
 Built on Re:Earth — Open-Source WebGIS | Submitted by Eukarya Inc.
 
 ---
@@ -20,7 +20,7 @@ Built on Re:Earth — Open-Source WebGIS | Submitted by Eukarya Inc.
 
 ## 1. Executive Summary
 
-Eukarya Inc. proposes **Verified Crisis Mapper** — an open-source, AI-resilient community damage reporting platform built on Re:Earth, our production-grade WebGIS platform that currently powers Japan's national 3D city model initiative (Project PLATEAU, 300 municipalities, ~30TB of data).[^12]
+Eukarya Inc. proposes **Verified Crisis Mapper** — an open-source community damage reporting platform with built-in disinformation defense, built on Re:Earth, our WebGIS platform that currently powers Japan's national 3D city model initiative (Project PLATEAU, 300 municipalities, ~30TB of data) — a proven deployment at national scale.[^12]
 
 The platform addresses UNDP's core requirement: enabling crisis-affected communities to submit geo-tagged photos and damage descriptions via mobile or web interfaces, with data displayed on a real-time map to guide humanitarian response.
 
@@ -32,7 +32,7 @@ Our key differentiator is a built-in **Trust Verification Engine** — a three-f
 |---|---|
 | Platform | Re:Earth WebGIS — Apache-2.0 OSS |
 | Unique Feature | Trust Score Engine — AI-generation detection + satellite cross-check + H3 spatial clustering + C2PA when available[^8] |
-| Proven Scale | PLATEAU: 300 municipalities, 30TB[^12] — same infrastructure, scaled for crisis reporting |
+| Proven Scale | PLATEAU: Re:Earth deployed across Japan's 300 municipalities nationwide. Same base platform extended for crisis reporting.[^12] |
 | Honest Scope | Natural disasters + non-shutdown conflicts; explicit out-of-scope for internet-blackout scenarios |
 
 ---
@@ -72,8 +72,8 @@ This scope transparency reflects our engineering philosophy: a system that hones
 
 | Layer | Description |
 |---|---|
-| **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Supports offline-first operation via PWA service worker with Background Sync. |
-| **Layer 2 — Trust Verification Engine** ★ Key Differentiator | Automated data quality assurance: (1) Image integrity via AI-generation fingerprint detection + EXIF GPS/timestamp consistency + C2PA verification[^8] when available on the submitting device; (2) Geospatial consistency via satellite damage analysis cross-reference; (3) Cross-report validation via H3 spatial clustering[^9] and outlier detection; (4) Trust Score (0–100) auto-assigned to each report; (5) Score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
+| **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Offline-first: submissions queue in IndexedDB and sync automatically when connectivity returns. |
+| **Layer 2 — Trust Verification Engine** (Key Differentiator) | Automated data quality assurance: image integrity via EXIF GPS/timestamp consistency + C2PA verification[^8] where available; geospatial consistency via satellite damage analysis cross-reference; cross-report validation via H3 spatial clustering[^9] and outlier detection; Trust Score (0–100) auto-assigned to each report; score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
 | **Layer 3 — Visualization & Decision Support** (React PWA Dashboard) | Mobile-first, installable Progressive Web App dashboard for government and UNDP operators. Displays real-time trust-tier color-coded map (MapLibre GL JS + satellite imagery), priority area auto-ranking, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. Runs on any smartphone or desktop browser — no separate app installation required beyond the single PWA. |
 
 ### 3.2 User Journey
@@ -82,9 +82,9 @@ This scope transparency reflects our engineering philosophy: a system that hones
 
 ![Phase 1 — Community preparedness: residents scan QR code to install PWA during a disaster drill](images/phase_0.png)
 
-*Fig. 1 — During a community preparedness drill, a local government staff member distributes QR codes. Residents scan once to install the PWA — from this point, the reporting form works offline on their device.*
+*Fig. 1 — During a community preparedness drill, a local government staff member distributes QR codes. Residents scan once to add the web app to their home screen — it is then available as a familiar icon before any disaster strikes.*
 
-The critical design insight from historical precedent (Haiti 2010 SMS "4636"[^6], Kumamoto 2016 LINE[^7]) is that new tools cannot be learned during a crisis. The PWA installation takes approximately 10 seconds via QR code scan during a routine preparedness drill. Once installed, the reporting form is cached on-device and launches instantly — even without network connectivity.
+The critical design insight from historical precedent (Haiti 2010 SMS "4636"[^6], Kumamoto 2016 LINE[^7]) is that new tools cannot be learned during a crisis. Adding the app to the home screen takes approximately 10 seconds via QR code scan during a routine preparedness drill. If connectivity drops during a crisis, submissions are queued on-device and transmitted automatically when any connection returns — no user action required.
 
 #### Phase 2 — The Reporting Window: 2–72 Hours Post-Disaster
 
@@ -95,9 +95,9 @@ The critical design insight from historical precedent (Haiti 2010 SMS "4636"[^6]
 Three access routes:
 - **Route A (pre-installed PWA):** Tap home screen icon → camera launches → GPS auto-captures → 3-tap form completion → data queued for sync. Zero network dependency during entry.
 - **Route B (first-time access):** Emergency responders broadcast the URL via SMS blast, radio, or shelter signage. Residents with restored connectivity access the form via browser.
-- **Route C (WhatsApp Business API bot):** For residents who will not install an app and do not have a browser link, a WhatsApp bot accepts photo + location + damage description via familiar chat interface. The bot normalises submissions into the same CMS schema as Routes A/B — all three routes feed the same Trust Score pipeline and map.
+- **Route C (WhatsApp Business API bot) — Phase 2:** For residents who will not install an app and do not have a browser link, a WhatsApp bot accepts photo + location + damage description via familiar chat interface. The bot normalises submissions into the same CMS schema as Routes A/B — all three routes feed the same Trust Score pipeline and map.
 
-Offline resilience: Background Sync API queues submissions locally; data transmits automatically when connectivity returns — no user action required.
+Offline resilience: submissions queue in IndexedDB; data transmits automatically when connectivity returns — no user action required.
 
 #### Phase 3 — Command & Decision: Real-Time Situational Awareness
 
@@ -115,9 +115,7 @@ Offline resilience: Background Sync API queues submissions locally; data transmi
 | Submission Metadata | 10 pts | Device timestamp plausibility; GPS accuracy radius; submission channel reliability weighting |
 | Score Routing | — | 80–100: High Trust → map display (green) \| 50–79: Review → flagged display (amber) \| 0–49: Verify → human review queue (red) |
 
-> **Political neutrality note:** The Trust Score engine addresses physical/geographical data integrity — verifying that a reported building collapse is real and correctly located. It does NOT evaluate political speech, opinion, or user identity. This keeps the system politically neutral and focused on its humanitarian purpose.
-
-> **Design honesty note:** The Image Integrity factor applies AI-generation detection and EXIF analysis to all submissions. C2PA cryptographic verification contributes as a high-confidence signal when present, but the system is explicitly designed not to require it — ensuring equal treatment of reports from low-end devices and WhatsApp Route C submissions where metadata is stripped in transit.
+The Trust Score engine addresses physical/geographical data integrity only — it does not evaluate political speech, opinion, or user identity. C2PA verification contributes as a high-confidence signal when present, but the system is designed to function without it, ensuring equal treatment of reports from low-end devices.
 
 ---
 
@@ -130,7 +128,7 @@ Offline resilience: Background Sync API queues submissions locally; data transmi
 | Frontend / Visualization | React PWA + MapLibre GL JS — mobile-first, installable, Apache-2.0 OSS |
 | Backend / CMS | Re:Earth CMS — Go, Rust; headless CMS with REST/GraphQL API |
 | Plugin System | WebAssembly-based sandboxed plugin runtime |
-| Offline / PWA | Service Worker + Background Sync API; IndexedDB local storage |
+| Offline / PWA | IndexedDB offline submission queue; auto-sync on connectivity recovery via online event |
 | Image Verification | C2PA open standard (Coalition for Content Provenance and Authenticity)[^8] |
 | Spatial Indexing | Uber H3 hexagonal grid[^9] (resolution 9) for cross-report clustering |
 | Data Export | GeoJSON, CSV — compatible with HDX, OCHA IM Toolbox, KoboToolbox |
@@ -158,7 +156,7 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 | Partner / Project | Description | Relevance |
 |---|---|---|
 | Project PLATEAU (MLIT Japan)[^12] | National 3D city model platform — 300 municipalities, ~30TB of data. Re:Earth serves as the visualization and CMS backbone. | Disaster preparedness, urban infrastructure |
-| UNDP / OCHA Compatibility | Re:Earth data output (GeoJSON/CSV) is fully compatible with KoboToolbox, HDX, and OCHA IM Toolbox standards used by UNDP field teams. | Humanitarian data interoperability |
+| LINKS Project (UNDP) | *(details to be confirmed)* Re:Earth adopted within the UNDP LINKS project. Demonstrated integration with UN humanitarian platforms. | Proven engagement with the UN system |
 | FOSS4G (Global OSS GIS Conference)[^15] | Regular presenter at the world's largest open-source GIS conference. | OSS credibility, global network |
 
 ---
@@ -185,7 +183,7 @@ At the time of proposal submission, the following components are operational and
 - **Staff Login Button:** "Government / Municipal Staff Login" link embedded in the Dashboard (desktop sidebar bottom; mobile statistics overlay bottom) — navigates directly to the Admin PIN screen without requiring the logo secret-tap.
 - **Admin Review Panel:** PIN-authenticated government operator view with progressive lockout (3 failed attempts → 30-second lockout; 6+ attempts → 120-second lockout). Three-button review workflow: **Approve** / **↩ Pending** / **Reject** — the Pending button allows reviewers to revert a decision for re-examination. Reject includes a 6-option reason dropdown. All decisions are written back to Re:Earth CMS and propagate to all connected dashboards within 30 seconds.
 - **Cross-Device Real-Time Sync:** Review decisions and new submissions appear on all connected devices within 30 seconds via CMS polling.
-- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors. Score breakdown displayed as bar chart in both the reporter confirmation screen and the Admin detail card.
+- **Trust Score MVP:** Four-factor scoring pipeline implemented. Geospatial consistency (GPS accuracy + area containment) and submission metadata (channel, landmark completeness) are fully operational. Image integrity uses photo-source branching (camera/library); C2PA and AI-generation detection use TRL 4–5 demo signals (live APIs scoped for Phase 2). Score breakdown displayed as bar chart in both the reporter confirmation screen and the Admin detail card.
 - **Re:Earth CMS:** Single-deployment model — one CMS project per deployment context (city/region), with `deployment-config` model (bounds, area, admin_pin, labels) and `damage-reports` model (15 fields including trust score sub-scores, review_status, reject_reason, image asset). Production-ready backend for multi-device, multi-operator deployment.
 
 > **TRL Status:** TRL 4–5 at submission. Core data collection, verification pipeline, and multi-device operator workflow are functional. Full Trust Score engine (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection.
@@ -205,7 +203,7 @@ At the time of proposal submission, the following components are operational and
 
 - Open-source publication allows any humanitarian organization, government, or NGO to deploy at zero licensing cost
 - Trust Score engine is applicable beyond crisis reporting: election monitoring, environmental damage reporting, conflict documentation
-- Establishes a community of practice around AI-resilient humanitarian data collection
+- Establishes a community of practice around disinformation-resilient humanitarian data collection
 - UNDP collaboration positions Verified Crisis Mapper as a potential global standard for community-powered crisis data integrity
 
 ### 7.3 Alignment with UNDP Strategic Priorities

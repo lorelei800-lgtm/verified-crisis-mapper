@@ -45,7 +45,7 @@ Three access routes ensure maximum reach:
 
 - **Route A (Pre-installed PWA):** During preparedness drills, residents scan a QR code to install the Progressive Web App. In a crisis, they tap the home screen icon, photograph damage with GPS auto-capture, complete a 3-tap form, and submit. Offline-first: submissions queue locally via Service Worker and transmit automatically via Background Sync when connectivity returns.
 - **Route B (First-time browser access):** Emergency responders broadcast a URL via SMS, radio, or shelter signage. Residents access the form directly in their mobile browser.
-- **Route C (WhatsApp):** Users send a photo to a dedicated WhatsApp Business API number. The bot returns a damage classification prompt (1: Minimal / 2: Partially Damaged / 3: Completely Destroyed), captures GPS metadata from the image, and ingests the report into the system — zero app installation required.
+- **Route C (WhatsApp) — Phase 2:** Users send a photo to a dedicated WhatsApp Business API number. The bot returns a damage classification prompt (1: Minimal / 2: Partially Damaged / 3: Completely Destroyed), captures GPS metadata from the image, and ingests the report into the system — zero app installation required.
 
 Each submission collects: photo, damage classification (Minimal / Partially Damaged / Completely Destroyed), infrastructure type (8 categories: Residential, Commercial, Government, Utility, Transport/Communication, Community, Public Space, Other), crisis nature (natural hazard / technological / human-made), debris clearance assessment, GPS coordinates, and textual landmark description as GPS fallback.
 
@@ -148,9 +148,9 @@ The reporting form is designed for one-hand smartphone operation with 3-tap core
 
 Eukarya is the creator and maintainer of Re:Earth, an open-source WebGIS platform published under the Apache-2.0 license. Re:Earth serves as the visualization and data management backbone for Japan's national 3D city model initiative, Project PLATEAU — a program of the Ministry of Land, Infrastructure, Transport and Tourism (MLIT) — covering 300 municipalities with approximately 30 terabytes of structured geospatial data. This demonstrates capability to handle national-scale data ingestion, real-time multi-stakeholder visualization, and high-availability infrastructure — the identical requirements as a national crisis reporting system.
 
-**Humanitarian Data Ecosystem Compatibility**
+**LINKS Project (UNDP)**
 
-Re:Earth's data export pipeline is directly compatible with UNDP and OCHA field tools: KoboToolbox (OCHA's standard field data collection platform), the Humanitarian Data Exchange (HDX), and the OCHA Information Management Toolbox. Data collected by Verified Crisis Mapper flows into existing UNDP/OCHA workflows without conversion.
+*(details to be confirmed)* Re:Earth adopted within the UNDP LINKS project, demonstrating proven engagement with UN humanitarian platforms. Data collected by Verified Crisis Mapper is also directly compatible with KoboToolbox, HDX, and the OCHA Information Management Toolbox.
 
 **Active International Projects**
 

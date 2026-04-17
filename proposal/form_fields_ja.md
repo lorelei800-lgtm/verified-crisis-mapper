@@ -45,7 +45,7 @@
 
 - **Route A（事前インストール済みPWA）：** 防災訓練中に住民がQRコードをスキャンしてProgressive Web Appをインストール。危機時にはホーム画面アイコンをタップ → GPS自動取得で写真撮影 → 3タップフォーム → 送信。オフラインファースト：投稿はService Worker経由でローカルにキューされ、Background Sync経由で接続回復時に自動送信。
 - **Route B（初回ブラウザアクセス）：** 緊急対応担当者がSMS・ラジオ・避難所の掲示でURLを配布。住民がモバイルブラウザからフォームに直接アクセス。
-- **Route C（WhatsApp）：** ユーザーが専用WhatsApp Business API番号に写真を送信。ボットが被害分類プロンプト（1：軽微 / 2：部分的破損 / 3：全壊）を返し、画像のGPSメタデータを取得してシステムに報告を取り込む——アプリインストール不要。
+- **Route C（WhatsApp）※Phase 2実装予定：** ユーザーが専用WhatsApp Business API番号に写真を送信。ボットが被害分類プロンプト（1：軽微 / 2：部分的破損 / 3：全壊）を返し、画像のGPSメタデータを取得してシステムに報告を取り込む予定——アプリインストール不要。
 
 各投稿で収集するデータ：写真・被害分類（軽微 / 部分的破損 / 全壊）・インフラ種別（8区分：住宅・商業・政府・公益・交通通信・コミュニティ・公共スペース・その他）・危機の性質（自然災害 / 技術的事故 / 人為的）・がれき状況評価・GPS座標・テキストによるランドマーク説明（GPS代替）。
 
@@ -148,9 +148,9 @@ Verified Crisis MapperはRe:Earth上に構築されています。Re:EarthはEuk
 
 EukaryaはRe:EarthのCreator兼Maintainerです。Re:EarthはApache-2.0ライセンスで公開されたオープンソースWebGISプラットフォームで、国土交通省（MLIT）のProject PLATEAU——約30TBの構造化地理空間データを持つ300自治体を網羅するプログラム——の可視化・データ管理バックボーンとして機能しています。これにより、国家規模でのデータ取り込み・リアルタイムマルチステークホルダー可視化・高可用性インフラへの対応能力が実証されています——国家的な危機報告システムと同一の要件です。
 
-**人道支援データエコシステムとの互換性**
+**LINKSプロジェクト（UNDP）**
 
-Re:Earthのデータエクスポートパイプラインは、UNDPおよびOCHAのフィールドツールと直接互換です：KoboToolbox（OCHAの標準フィールドデータ収集プラットフォーム）・Humanitarian Data Exchange（HDX）・OCHA Information Management Toolbox。Verified Crisis Mapperが収集したデータは変換なしに既存のUNDP/OCHAワークフローに流れ込みます。
+※内容をご確認・追記ください。UNDP LINKSプロジェクトにおけるRe:Earthの採用実績。国連人道支援プラットフォームとの実証実績。Verified Crisis Mapperが収集したデータはGeoJSON/CSV形式でKoboToolbox・HDX・OCHA IM Toolboxとも互換です。
 
 **進行中の国際プロジェクト**
 
