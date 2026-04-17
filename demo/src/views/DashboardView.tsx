@@ -248,47 +248,50 @@ export default function DashboardView({
       },
     })
 
-    // ── Touch tap detection (Android Chrome fix) ─────────────────────────
-    // MapLibre's synthetic 'click' from touch is unreliable on Android.
-    // We listen to MapLibre's own touchstart/touchend, wait 80ms for any
-    // layer-specific click events to fire, then place the pin only if none did.
-    let touchStartX = 0, touchStartY = 0
-    let layerConsumed = false  // set by layer click handlers; read by touchend timeout
+    // ── Tap / click via native PointerEvents ────────────────────────────
+    // MapLibre v4 uses PointerEvents internally. map.on('touchend') carries
+    // a PointerEvent as originalEvent (changedTouches is undefined), so the
+    // previous touchend approach silently failed on Android Chrome.
+    //
+    // Solution: attach pointerdown/pointerup directly to the canvas element.
+    // These fire reliably for both touch (pointerType='touch') and mouse on
+    // all modern browsers.  A 50 ms setTimeout lets MapLibre's synchronous
+    // layer-click handlers set layerConsumed before we decide to place a pin.
+    const canvas = map.getCanvas()
+    let ptrStartX = 0, ptrStartY = 0
+    let layerConsumed = false
 
-    map.on('touchstart', (e) => {
-      if (e.originalEvent.touches.length === 1) {
-        touchStartX = e.originalEvent.touches[0].clientX
-        touchStartY = e.originalEvent.touches[0].clientY
-      } else {
-        touchStartX = -9999  // multi-touch (pinch zoom) — disqualify
-      }
-    })
-
-    map.on('touchend', (e) => {
-      if (e.originalEvent.changedTouches.length !== 1) return
-      const t = e.originalEvent.changedTouches[0]
-      const dx = t.clientX - touchStartX
-      const dy = t.clientY - touchStartY
-      if (dx * dx + dy * dy > 144) return  // moved >12px — was a pan gesture
-      layerConsumed = false                // reset; layer click may set it before timeout fires
-      const pos = e.lngLat                 // capture now; e is recycled by the time timeout runs
+    const onPtrDown = (e: PointerEvent) => {
+      ptrStartX = e.clientX
+      ptrStartY = e.clientY
+    }
+    const onPtrUp = (e: PointerEvent) => {
+      const dx = e.clientX - ptrStartX
+      const dy = e.clientY - ptrStartY
+      // 15 px tolerance for touch (fingers move even on a "stationary" tap);
+      // 5 px for mouse pointer.
+      const tol = e.pointerType === 'touch' ? 225 : 25
+      if (dx * dx + dy * dy > tol) return   // was a drag / pan
+      const rect  = canvas.getBoundingClientRect()
+      const lngLat = map.unproject([e.clientX - rect.left, e.clientY - rect.top])
+      layerConsumed = false                  // reset — layer handler may set true within 50 ms
       setTimeout(() => {
-        // layerConsumed: a MapLibre layer-click fired after this touchend
-        // mapTapConsumedRef: the general click handler already consumed a layer hit
         if (layerConsumed || mapTapConsumedRef.current) {
           mapTapConsumedRef.current = false
           layerConsumed = false
           return
         }
-        setMapReportPin({ lat: pos.lat, lng: pos.lng })
+        setMapReportPin({ lat: lngLat.lat, lng: lngLat.lng })
         setSelectedReport(null)
         setMobileListOpen(false)
-      }, 80)
-    })
+      }, 50)
+    }
+    canvas.addEventListener('pointerdown', onPtrDown)
+    canvas.addEventListener('pointerup',   onPtrUp)
 
     map.on('click', 'clusters', async (e) => {
-      mapTapConsumedRef.current = true   // mark consumed so general handler skips
-      layerConsumed = true               // mark for touchend timeout
+      mapTapConsumedRef.current = true   // mark consumed for the old click path
+      layerConsumed = true               // mark for pointerup timeout
       const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
       if (!feats.length) return
       const clusterId = feats[0].properties!.cluster_id as number
@@ -300,8 +303,8 @@ export default function DashboardView({
     })
 
     map.on('click', 'points', (e) => {
-      mapTapConsumedRef.current = true   // mark consumed so general handler skips
-      layerConsumed = true               // mark for touchend timeout
+      mapTapConsumedRef.current = true   // mark consumed for the old click path
+      layerConsumed = true               // mark for pointerup timeout
       const feats = map.queryRenderedFeatures(e.point, { layers: ['points'] })
       if (!feats.length) return
       const id = feats[0].properties!.id as string
@@ -313,15 +316,10 @@ export default function DashboardView({
       }
     })
 
-    // Empty-area click — offer to file a new report at this location.
-    // Uses a consumed-flag instead of queryRenderedFeatures to work reliably on Android
-    // (queryRenderedFeatures uses a wider hit radius on touch which can mask empty taps).
-    map.on('click', (e) => {
-      if (mapTapConsumedRef.current) { mapTapConsumedRef.current = false; return }
-      setMapReportPin({ lat: e.lngLat.lat, lng: e.lngLat.lng })
-      setSelectedReport(null)
-      setMobileListOpen(false)
-    })
+    // Note: the general map.on('click', ...) is intentionally removed.
+    // Tap / click detection is handled by the native pointerdown/pointerup
+    // listeners on the canvas (see above).  This avoids MapLibre v4's
+    // PointerEvent↔TouchEvent mismatch on Android Chrome.
 
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
