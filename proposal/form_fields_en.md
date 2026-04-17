@@ -43,7 +43,7 @@ This honest scope definition is itself a design principle. A system that clearly
 
 Three access routes ensure maximum reach:
 
-- **Route A (Pre-installed PWA):** During preparedness drills, residents scan a QR code to install the Progressive Web App. In a crisis, they tap the home screen icon, photograph damage with GPS auto-capture, complete a 3-tap form, and submit. Offline-first: submissions queue locally via Service Worker and transmit automatically via Background Sync when connectivity returns.
+- **Route A (Home-screen web app):** During preparedness drills, residents scan a QR code to add the web app to their home screen. In a crisis, they tap the icon, photograph damage with GPS auto-capture, complete a 3-tap form, and submit. Offline-first: submissions queue locally in IndexedDB and transmit automatically when connectivity returns — no user action required. Submitted reports are stored in Re:Earth CMS and appear on the dashboard immediately.
 - **Route B (First-time browser access):** Emergency responders broadcast a URL via SMS, radio, or shelter signage. Residents access the form directly in their mobile browser.
 - **Route C (WhatsApp) — Phase 2:** Users send a photo to a dedicated WhatsApp Business API number. The bot returns a damage classification prompt (1: Minimal / 2: Partially Damaged / 3: Completely Destroyed), captures GPS metadata from the image, and ingests the report into the system — zero app installation required.
 
@@ -56,9 +56,9 @@ Each report is automatically assigned a Trust Score (0–100):
 | Factor | Weight |
 |---|---|
 | Image Integrity (AI-generation detection applied to all submissions; EXIF GPS/timestamp consistency; C2PA cryptographic verification as high-confidence bonus where device-supported) | 40 pts |
-| Geospatial Consistency (satellite damage probability cross-reference) | 30 pts |
-| Cross-Report Validation (H3 spatial clustering, ~105m cells; neutral score during sparse early-reporting phase) | 20 pts |
-| Submission Metadata (timestamp, GPS accuracy, channel weighting) | 10 pts |
+| Geospatial Consistency (**Phase 1:** area containment check + GPS accuracy band scoring; **Phase 2:** satellite damage probability cross-reference) | 30 pts |
+| Cross-Report Validation (H3 spatial clustering, ~105m cells; matching damage level comparison against nearby reports; neutral score during sparse early-reporting phase) | 20 pts |
+| Submission Metadata (submission channel trust weighting; landmark and district field completeness; GPS accuracy value) | 10 pts |
 
 Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <50 → human review queue (red). The engine evaluates physical and geographical integrity only — not political speech or user identity. The scoring model is explicitly designed to function without C2PA, ensuring equal treatment of reports from low-end devices and WhatsApp submissions where metadata is stripped in transit.
 
@@ -69,11 +69,15 @@ The Verified Crisis Mapper dashboard — a React Progressive Web App with MapLib
 **Live prototype:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
 *(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
 
-The prototype is fully functional: damage report submission with photo, GPS, and Trust Score feedback; MapLibre GL JS satellite dashboard with color-coded trust-tier pins; Admin Review Panel with PIN lockout and 3-button review (Approve / ↩ Pending / Reject); Staff Login button embedded in the Dashboard; and Re:Earth CMS write-back with 30-second cross-device sync. Citizens access the dashboard freely without a PIN gate.
+The prototype is fully functional across all user roles:
+
+- **Residents and businesses (reporters):** Submit damage reports with photo, GPS, and damage classification. Receive Trust Score feedback immediately after submission. Reports are stored in Re:Earth CMS and appear on the live map instantly.
+- **General public (viewers):** Access the dashboard without authentication to view real-time damage locations and Trust Score indicators.
+- **Municipal/government operators:** Access the Admin Review Panel via the Staff Login button in the Dashboard. Review each report's photo, GPS, Trust Score breakdown, and damage classification, then Approve / ↩ Pending / Reject. Decisions are written back to Re:Earth CMS and propagate to all connected devices within 30 seconds. PIN lockout (3 fails → 30s; 6+ → 120s) prevents unauthorized access.
 
 **Engagement Without Gaming**
 
-Participation incentives are non-monetary and anti-gaming by design: immediate map confirmation ("Your report is now live"), Trust Score feedback visible to the reporter, and Phase 0 community drill pre-registration that builds ownership before disaster strikes. Rapid repeat submissions, AI-generated images, and GPS spoofing are algorithmically penalized by the Trust Score engine.
+Participation incentives are non-monetary and anti-gaming by design: immediate map confirmation ("Your report is now live"), Trust Score feedback visible to the reporter, and Phase 0 community drill pre-registration that builds ownership before disaster strikes. Rapid repeat submissions, AI-generated images, and GPS spoofing result in a lower Trust Score for the affected report, routing it to human review — no individual user is identified or penalized; only the report's credibility score is adjusted.
 
 All six UN official languages are supported: Arabic, Chinese, English, French, Russian, and Spanish.
 
@@ -134,7 +138,7 @@ Architecture supports local events (50,000 uploads), regional crises (250,000), 
 
 **Deployment Speed**
 
-Containerized infrastructure enables deployment within 48 hours of a declared crisis, requiring only a cloud environment and DNS configuration.
+Because Re:Earth CMS, the reporting form, dashboard, and Admin Review Panel are all production-ready, a new deployment requires only CMS project configuration and environment variable changes. A new city or region can be operational within hours of a crisis declaration — including DNS setup, a new deployment is achievable within one working day.
 
 **Usability**
 
@@ -182,7 +186,7 @@ Generative AI enables fabrication of plausible damage imagery at near-zero cost.
 
 Partial or intermittent connectivity is endemic in disaster environments. Full internet shutdown is explicitly out of scope.
 
-*Mitigation:* PWA Service Worker caches the reporting form on-device. Background Sync API queues submissions locally and transmits automatically when any connectivity returns — no user action required. WhatsApp queues natively in the app's offline state.
+*Mitigation:* Submissions entered while offline are queued in IndexedDB and transmit automatically when connectivity returns — no user action required. Note: accessing the form URL itself requires network connectivity (no Service Worker page caching is implemented in the current version). WhatsApp queues natively in the app's offline state (Phase 2).
 
 **Risk 3: C2PA-Non-Compliant Devices**
 
@@ -204,7 +208,7 @@ Malicious actors may falsify coordinates to redirect resources.
 
 **Risk 6: Infrastructure Cost at Scale**
 
-*Mitigation:* Cloud-agnostic Docker deployment avoids vendor lock-in. The $50,000 award covers Phase 1–2 development. Phase 3+ operational costs are addressed via UNDP partnership or government-hosted deployment.
+*Mitigation:* Cloud-agnostic Docker deployment avoids vendor lock-in. The $50,000 award is allocated as a significant contribution toward Phase 2 development (C2PA integration, satellite API, WhatsApp Route C, etc.) — it is not intended to cover the full Phase 2 development cost, but rather to fund the critical initial components. Phase 3+ operational costs are addressed via UNDP partnership or government-hosted deployment.
 
 ---
 

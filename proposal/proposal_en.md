@@ -120,7 +120,7 @@ Offline resilience: submissions queue in IndexedDB; data transmits automatically
 | Factor | Weight | Method |
 |---|---|---|
 | Image Integrity | 40 pts | Primary: AI-generation fingerprint detection (frequency-domain analysis applied to all submissions); EXIF GPS/timestamp consistency check; C2PA (Content Credentials)[^8] cryptographic verification applied as a high-confidence bonus where supported by the submitting device. Note: C2PA hardware support remains limited in crisis-affected regions; the scoring model is designed to function without it. |
-| Geospatial Consistency | 30 pts | Reported coordinates cross-referenced against satellite-derived damage probability map; historical baseline comparison |
+| Geospatial Consistency | 30 pts | **Phase 1:** area containment check (reported coordinates within declared disaster zone) + GPS accuracy band scoring. **Phase 2:** cross-reference against satellite-derived damage probability map; historical baseline comparison. |
 | Cross-Report Validation | 20 pts | H3 spatial grid clustering[^9] (resolution 9, ~0.105 km² cells); outlier detection against neighbor report characteristics; graceful degradation to neutral score during sparse early-reporting phase |
 | Submission Metadata | 10 pts | Device timestamp plausibility; GPS accuracy radius; submission channel reliability weighting |
 | Score Routing | — | 80–100: High Trust → map display (green) \| 50–79: Review → flagged display (amber) \| 0–49: Verify → human review queue (red) |
