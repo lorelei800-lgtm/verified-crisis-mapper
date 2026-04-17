@@ -17,6 +17,8 @@ interface Props {
   isCmsLoading?: boolean
   cmsFetchError?: string | null
   onRefresh?: () => void
+  /** Called when user taps "Open Form" on a map-placed pin — navigates to ReporterView with coords */
+  onMapReport?: (lat: number, lng: number) => void
 }
 
 export default function DashboardView({
@@ -28,6 +30,7 @@ export default function DashboardView({
   isCmsLoading = false,
   cmsFetchError = null,
   onRefresh,
+  onMapReport,
 }: Props) {
   const mapContainer       = useRef<HTMLDivElement>(null)
   const mapRef             = useRef<maplibregl.Map | null>(null)
@@ -43,6 +46,8 @@ export default function DashboardView({
   const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
   const [isPullRefreshing, setIsPullRefreshing] = useState(false)
+  /** Coordinates of a map-click pin — shown as "Report here?" strip until dismissed */
+  const [mapReportPin, setMapReportPin] = useState<{ lat: number; lng: number } | null>(null)
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const baseReports = useMemo((): DamageReport[] => {
@@ -137,7 +142,11 @@ export default function DashboardView({
     })
     map.addControl(new maplibregl.NavigationControl(), 'top-right')
     mapRef.current = map
-    map.on('load', () => setMapReady(true))
+    map.on('load', () => {
+      setMapReady(true)
+      // Crosshair hints to the user that clicking an empty area places a report pin
+      map.getCanvas().style.cursor = 'crosshair'
+    })
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -239,13 +248,26 @@ export default function DashboardView({
       if (!feats.length) return
       const id = feats[0].properties!.id as string
       const report = filteredReportsRef.current.find(r => r.id === id)
-      if (report) { setSelectedReport(report); setMobileListOpen(false) }
+      if (report) {
+        setSelectedReport(report)
+        setMobileListOpen(false)
+        setMapReportPin(null)   // dismiss any pending pin when viewing an existing report
+      }
+    })
+
+    // Empty-area click — offer to file a new report at this location
+    map.on('click', (e) => {
+      const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'points'] })
+      if (feats.length > 0) return   // handled by layer-specific handlers above
+      setMapReportPin({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      setSelectedReport(null)
+      setMobileListOpen(false)
     })
 
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
+    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
     map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = '' })
+    map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = 'crosshair' })
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -491,8 +513,52 @@ export default function DashboardView({
           </div>
         )}
 
+        {/* ── Map report pin strip — desktop card + mobile full-width ── */}
+        {mapReportPin && !selectedReport && (
+          <>
+            {/* Desktop: floating card at bottom-left (replaces legend while active) */}
+            <div className="hidden lg:flex absolute bottom-4 left-3 z-10 w-72 bg-white rounded-xl shadow-lg border border-blue-200 p-3 items-center gap-3">
+              <div className="w-8 h-8 shrink-0 rounded-full bg-blue-50 border-2 border-blue-300 flex items-center justify-center text-sm select-none">📍</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-gray-800">Report damage here?</div>
+                <div className="text-[10px] text-gray-400 font-mono">
+                  {mapReportPin.lat.toFixed(5)}, {mapReportPin.lng.toFixed(5)}
+                </div>
+              </div>
+              {onMapReport && (
+                <button
+                  onClick={() => { onMapReport(mapReportPin.lat, mapReportPin.lng); setMapReportPin(null) }}
+                  className="shrink-0 px-3 py-1.5 bg-blue-700 text-white text-xs font-bold rounded-lg hover:bg-blue-800 active:bg-blue-900 transition-colors">
+                  Open Form
+                </button>
+              )}
+              <button onClick={() => setMapReportPin(null)}
+                className="shrink-0 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-gray-600 text-sm">✕</button>
+            </div>
+            {/* Mobile: full-width strip at bottom */}
+            <div className="lg:hidden absolute bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-blue-300 shadow-2xl p-3 flex items-center gap-3">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-blue-50 border-2 border-blue-300 flex items-center justify-center text-lg select-none">📍</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-gray-800">Report damage here?</div>
+                <div className="text-xs text-gray-400 font-mono">
+                  {mapReportPin.lat.toFixed(5)}, {mapReportPin.lng.toFixed(5)}
+                </div>
+              </div>
+              {onMapReport && (
+                <button
+                  onClick={() => { onMapReport(mapReportPin.lat, mapReportPin.lng); setMapReportPin(null) }}
+                  className="shrink-0 px-4 py-2.5 bg-blue-700 text-white text-sm font-bold rounded-xl active:bg-blue-900 transition-colors">
+                  Open Form
+                </button>
+              )}
+              <button onClick={() => setMapReportPin(null)}
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-gray-300 text-xl">✕</button>
+            </div>
+          </>
+        )}
+
         {/* ── Mobile: report list bottom sheet ── */}
-        {!selectedReport && (
+        {!selectedReport && !mapReportPin && (
           <div className="lg:hidden absolute bottom-0 left-0 right-0 z-20">
             <button onClick={() => setMobileListOpen(!mobileListOpen)}
               className="w-full h-12 bg-white border-t border-gray-200 rounded-t-2xl flex items-center justify-between px-4 shadow-lg">

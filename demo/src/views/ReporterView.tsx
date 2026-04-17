@@ -13,6 +13,8 @@ interface Props {
   onNewReport: (report: DamageReport) => void
   existingReports?: DamageReport[]   // for cross-report validation
   isOnline?: boolean
+  /** Coordinates pre-filled when the user taps "Report here" on the dashboard map */
+  prefilledLocation?: { lat: number; lng: number }
 }
 
 type FormStep    = 'form' | 'submitting' | 'result'
@@ -27,7 +29,7 @@ interface NominatimResult {
   address?: Record<string, string | undefined>
 }
 
-export default function ReporterView({ config, onViewDashboard, onNewReport, existingReports = [], isOnline: isOnlineProp }: Props) {
+export default function ReporterView({ config, onViewDashboard, onNewReport, existingReports = [], isOnline: isOnlineProp, prefilledLocation }: Props) {
   const [step, setStep]               = useState<FormStep>('form')
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('scoring')
 
@@ -65,13 +67,9 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
   const isOnline = isOnlineProp !== undefined ? isOnlineProp : isOnlineLocal
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Low-bandwidth mode: compress photos smaller, hide GPS iframe
-  // Default ON — optimised for disaster field conditions.
-  // Persists to localStorage so the user's choice survives page reload.
-  const [lowBandwidth, setLowBandwidth] = useState<boolean>(() => {
-    const saved = localStorage.getItem('vcm_low_bandwidth')
-    return saved !== null ? saved === 'true' : true   // default ON
-  })
+  // Low-bandwidth mode: always ON — disaster field conditions optimised.
+  // Compresses photos to 640px / 60% (~150 KB) and hides the OSM iframe preview.
+  const lowBandwidth = true
 
   const fileRef   = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -109,10 +107,32 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
   }, [])
 
-  // ── Persist low-bandwidth preference ──────────────────────────────────────
+  // ── Pre-fill location when coming from dashboard map ─────────────────────
   useEffect(() => {
-    localStorage.setItem('vcm_low_bandwidth', String(lowBandwidth))
-  }, [lowBandwidth])
+    if (!prefilledLocation) return
+    const { lat, lng } = prefilledLocation
+    setGpsLat(lat); setGpsLng(lng)
+    setGpsStatus('acquired')
+    setGpsAccuracy(50)   // map-tap accuracy is unspecified; treat as ~50m
+    setInArea(isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km))
+    // Reverse-geocode the selected map point
+    setGeocoding(true)
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+      { headers: { 'User-Agent': 'VerifiedCrisisMapper/1.0' } }
+    ).then(r => r.json()).then(data => {
+      const addr = data.address ?? {}
+      const landmarkName =
+        addr.amenity ?? addr.building ?? addr.neighbourhood ??
+        addr.quarter ?? addr.suburb ?? addr.city_district ??
+        addr.road ?? addr.town ?? addr.city ??
+        data.display_name?.split(',')[0] ?? ''
+      const districtName = addr.city_district ?? addr.borough ?? addr.county ?? addr.state_district ?? ''
+      if (landmarkName) setLandmark(landmarkName)
+      if (districtName) setDistrict(districtName)
+    }).catch(() => {}).finally(() => setGeocoding(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])   // run once on mount — prefilledLocation is stable per component instance
 
   const handleSelectLocation = (result: NominatimResult) => {
     const lat = parseFloat(result.lat)
@@ -452,25 +472,20 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
   return (
     <div className="flex-1 max-w-md mx-auto w-full p-4 overflow-y-auto">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span>
-            <strong>Scenario:</strong> {config.scenario_label} · {config.subtitle}
-            {CMS.writable && <span className="ml-2 text-blue-500">· Saved to CMS</span>}
-          </span>
-          <button
-            type="button"
-            onClick={() => setLowBandwidth(v => !v)}
-            title={lowBandwidth ? 'Low-Bandwidth Mode ON — tap for Enhanced Mode' : 'Enhanced Mode ON — tap for Low-Bandwidth Mode'}
-            className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
-              lowBandwidth
-                ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                : 'bg-blue-100 text-blue-700 border border-blue-200'
-            }`}>
-            <span>{lowBandwidth ? '📡' : '✦'}</span>
-            {lowBandwidth ? 'Low BW' : 'Enhanced'}
-          </button>
-        </div>
+        <span>
+          <strong>Scenario:</strong> {config.scenario_label} · {config.subtitle}
+          {CMS.writable && <span className="ml-2 text-blue-500">· Saved to CMS</span>}
+          <span className="ml-2 text-orange-600 font-semibold">· 📡 Low-BW</span>
+        </span>
       </div>
+
+      {/* From-map indicator — shown when location was pre-filled from the dashboard */}
+      {prefilledLocation && (
+        <div className="bg-indigo-50 border border-indigo-300 rounded-lg p-3 mb-4 text-xs text-indigo-800 flex items-center gap-2">
+          <span className="text-base shrink-0">📌</span>
+          <span><strong>Location pre-filled from map.</strong> Coordinates loaded — please verify and complete the form below.</span>
+        </div>
+      )}
 
       {gpsStatus === 'acquired' && !inArea && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-4 text-xs text-amber-800">

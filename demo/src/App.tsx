@@ -36,6 +36,10 @@ export default function App() {
   const [adminAuthed, setAdminAuthed]       = useState(false)
   const [pendingOfflineCount, setPendingOfflineCount] = useState(0)
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  /** Coordinates placed by a map click — passed to ReporterView as prefilledLocation */
+  const [mapReportLocation, setMapReportLocation] = useState<{ lat: number; lng: number } | null>(null)
+  /** Incremented on each map-report nav to force ReporterView remount (re-runs prefill effect) */
+  const [reporterKey, setReporterKey] = useState(0)
 
   // Secret tap counter: tap VCM logo 5 times to open Admin
   const logoTapCount = useRef(0)
@@ -186,6 +190,19 @@ export default function App() {
     if (CMS.enabled) setTimeout(() => doFetch(), 3000)
   }
 
+  /** Navigate to reporter via normal tab — clears any map-placed pin */
+  const handleGoToReporter = () => {
+    setMapReportLocation(null)
+    setView('reporter')
+  }
+
+  /** Called from DashboardView when the user taps "Open Form" on a map pin */
+  const handleMapReport = (lat: number, lng: number) => {
+    setMapReportLocation({ lat, lng })
+    setReporterKey(k => k + 1)   // remount ReporterView so prefill useEffect re-runs
+    setView('reporter')
+  }
+
   const handleGoToDashboard = () => {
     setView('dashboard')
     setUnseenCount(0)
@@ -234,7 +251,7 @@ export default function App() {
           {/* PC nav — shown only on lg+ screens */}
           <div className="hidden lg:flex items-center rounded-xl overflow-hidden border border-blue-600 text-sm shrink-0">
             <button
-              onClick={() => setView('reporter')}
+              onClick={handleGoToReporter}
               className={`px-4 py-2 flex items-center gap-2 transition-colors ${
                 view === 'reporter'
                   ? 'bg-white text-blue-800 font-semibold'
@@ -304,11 +321,13 @@ export default function App() {
         }>
           {view === 'reporter' ? (
             <ReporterView
+              key={reporterKey}
               config={config}
-              onViewDashboard={() => setView('dashboard')}
+              onViewDashboard={handleGoToDashboard}
               onNewReport={handleNewReport}
               existingReports={CMS.enabled ? cmsReports : mockReports}
               isOnline={isOnline}
+              prefilledLocation={mapReportLocation ?? undefined}
             />
           ) : view === 'dashboard' ? (
             <DashboardView
@@ -320,6 +339,7 @@ export default function App() {
               isCmsLoading={isCmsLoading}
               cmsFetchError={cmsFetchError}
               onRefresh={() => doFetch()}
+              onMapReport={handleMapReport}
             />
           ) : (
             <AdminView
@@ -328,7 +348,8 @@ export default function App() {
               onReview={handleReview}
               isAuthed={adminAuthed}
               onAuthSuccess={() => setAdminAuthed(true)}
-              onLogout={() => { setAdminAuthed(false); setView('reporter') }}
+              onLogout={() => { setAdminAuthed(false); handleGoToReporter() }}
+              adminPin={config.admin_pin}
             />
           )}
         </Suspense>
@@ -337,7 +358,7 @@ export default function App() {
       {/* ── Mobile bottom nav (hidden on lg+) ──────────────────────────────── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex">
         <button
-          onClick={() => setView('reporter')}
+          onClick={handleGoToReporter}
           className={`flex-1 relative flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
             view === 'reporter' ? 'text-blue-700' : 'text-gray-400'
           }`}

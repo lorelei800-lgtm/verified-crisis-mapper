@@ -3,8 +3,6 @@ import type { DamageReport, ReviewMap, ReviewStatus } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 
-const DEMO_PIN = '0000'
-
 type ReviewTab = 'all' | 'pending' | 'approved' | 'rejected'
 
 interface Props {
@@ -14,9 +12,11 @@ interface Props {
   isAuthed: boolean
   onAuthSuccess: () => void
   onLogout: () => void
+  /** 4-digit PIN from CMS deployment-config; falls back to '0000' when not set */
+  adminPin?: string
 }
 
-export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAuthSuccess, onLogout }: Props) {
+export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAuthSuccess, onLogout, adminPin }: Props) {
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState(false)
   const [tab,      setTab]      = useState<ReviewTab>('pending')
@@ -64,7 +64,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
 
   const handleLogin = () => {
     if (pinInput.length < 4) return
-    if (pinInput === DEMO_PIN) {
+    if (pinInput === (adminPin ?? '0000')) {
       onAuthSuccess()
       setPinInput('')
       setPinError(false)

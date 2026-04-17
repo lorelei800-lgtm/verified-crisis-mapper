@@ -56,6 +56,9 @@ export interface DeploymentConfig {
   area_center_lat: number
   area_center_lng: number
   area_radius_km:  number  // reports outside this radius get geo score = 0
+  // Admin access — managed centrally from CMS so HQ can rotate without code changes.
+  // Note: stored in the public-readable model; the PIN is a convenience gate, not crypto auth.
+  admin_pin?: string  // 4-digit PIN; falls back to '0000' when not set in CMS
 }
 
 export type ReviewStatus = 'approved' | 'rejected'

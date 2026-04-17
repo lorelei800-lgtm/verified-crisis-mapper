@@ -164,6 +164,7 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
     const s = (key: string, fallback: string): string =>
       typeof item[key] === 'string' ? (item[key] as string) : fallback
 
+    const adminPin = s('admin_pin', '')
     return {
       title:           s('title',           DEFAULT_CONFIG.title),
       scenario_label:  s('scenario_label',  DEFAULT_CONFIG.scenario_label),
@@ -175,6 +176,7 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
       area_center_lat: n('area_center_lat', DEFAULT_CONFIG.area_center_lat),
       area_center_lng: n('area_center_lng', DEFAULT_CONFIG.area_center_lng),
       area_radius_km:  n('area_radius_km',  DEFAULT_CONFIG.area_radius_km),
+      admin_pin:       adminPin || undefined,   // undefined → AdminView falls back to '0000'
     }
   } catch (err) {
     console.warn('[CMS] fetchDeploymentConfig failed — using defaults', err)
