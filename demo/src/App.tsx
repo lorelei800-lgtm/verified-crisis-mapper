@@ -150,13 +150,39 @@ export default function App() {
   useEffect(() => {
     fetchAllScenarios().then(all => {
       setScenarios(all)
-      setConfig(all[0])
+
+      // Determine initial scenario from ?scenario= URL param
+      // Supports exact match against scenario_label or title (case-insensitive).
+      // Example: https://vcm.app/?scenario=fukui-asuwa-flood
+      const param = new URLSearchParams(window.location.search).get('scenario')
+      let initIdx = 0
+      if (param) {
+        const p = param.toLowerCase()
+        const found = all.findIndex(s =>
+          s.scenario_label.toLowerCase() === p ||
+          s.title.toLowerCase() === p ||
+          // also match slug-style: spaces/special chars → hyphens
+          s.scenario_label.toLowerCase().replace(/[^a-z0-9]+/g, '-') === p
+        )
+        if (found >= 0) initIdx = found
+      }
+      setActiveScenarioIdx(initIdx)
+      setConfig(all[initIdx])
     })
   }, [])
 
   const handleScenarioChange = (idx: number) => {
     setActiveScenarioIdx(idx)
     setConfig(scenarios[idx])
+    // Update URL param so the current scenario is bookmarkable / shareable
+    const url = new URL(window.location.href)
+    const label = scenarios[idx].scenario_label
+    if (label) {
+      url.searchParams.set('scenario', label.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    } else {
+      url.searchParams.delete('scenario')
+    }
+    window.history.replaceState({}, '', url.toString())
     // viewer_pin is "access to this dashboard deployment", not per-scenario
     // → do NOT reset viewerAuthed when switching scenarios
   }
