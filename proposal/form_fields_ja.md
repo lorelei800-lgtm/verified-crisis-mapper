@@ -148,9 +148,9 @@ Verified Crisis MapperはRe:Earth上に構築されています。Re:EarthはEuk
 
 EukaryaはRe:EarthのCreator兼Maintainerです。Re:EarthはApache-2.0ライセンスで公開されたオープンソースWebGISプラットフォームで、国土交通省（MLIT）のProject PLATEAU——約30TBの構造化地理空間データを持つ300自治体を網羅するプログラム——の可視化・データ管理バックボーンとして機能しています。これにより、国家規模でのデータ取り込み・リアルタイムマルチステークホルダー可視化・高可用性インフラへの対応能力が実証されています——国家的な危機報告システムと同一の要件です。
 
-**LINKSプロジェクト（UNDP）**
+**LINKSプロジェクト / LINKS VEDA（国土交通省）**
 
-※内容をご確認・追記ください。UNDP LINKSプロジェクトにおけるRe:Earthの採用実績。国連人道支援プラットフォームとの実証実績。Verified Crisis Mapperが収集したデータはGeoJSON/CSV形式でKoboToolbox・HDX・OCHA IM Toolboxとも互換です。
+Eukaryaは国交省主導の横断的データ活用DXイニシアチブ「LINKSプロジェクト」において、基盤データプラットフォーム「LINKS VEDA」のシステム構築に参画しました。LINKS VEDAは非構造化行政データ（文書・PDF・帳票類）をLLMで構造化・分析可能なデータに変換するインフラです。自治体・国の行政データを機械可読形式に変換する国家規模の実績は、災害時の行政情報高速処理という危機報告プラットフォームのニーズと直接接続します。Verified Crisis Mapperが収集したデータはGeoJSON/CSV形式でKoboToolbox・HDX・OCHA IM Toolboxとも互換です。
 
 **進行中の国際プロジェクト**
 

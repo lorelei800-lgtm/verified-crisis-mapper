@@ -156,7 +156,7 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 | Partner / Project | Description | Relevance |
 |---|---|---|
 | Project PLATEAU (MLIT Japan)[^12] | National 3D city model platform — 300 municipalities, ~30TB of data. Re:Earth serves as the visualization and CMS backbone. | Disaster preparedness, urban infrastructure |
-| LINKS Project (UNDP) | *(details to be confirmed)* Re:Earth adopted within the UNDP LINKS project. Demonstrated integration with UN humanitarian platforms. | Proven engagement with the UN system |
+| LINKS Project / LINKS VEDA (MLIT Japan) | Japan's Ministry of Land, Infrastructure, Transport and Tourism cross-sectoral data DX initiative. Eukarya participated in building the LINKS VEDA platform — an LLM-powered data infrastructure that converts unstructured government records (documents, PDFs, forms) into structured, machine-readable data at national scale. | National digital infrastructure · government data DX |
 | FOSS4G (Global OSS GIS Conference)[^15] | Regular presenter at the world's largest open-source GIS conference. | OSS credibility, global network |
 
 ---

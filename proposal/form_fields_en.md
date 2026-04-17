@@ -148,9 +148,9 @@ The reporting form is designed for one-hand smartphone operation with 3-tap core
 
 Eukarya is the creator and maintainer of Re:Earth, an open-source WebGIS platform published under the Apache-2.0 license. Re:Earth serves as the visualization and data management backbone for Japan's national 3D city model initiative, Project PLATEAU — a program of the Ministry of Land, Infrastructure, Transport and Tourism (MLIT) — covering 300 municipalities with approximately 30 terabytes of structured geospatial data. This demonstrates capability to handle national-scale data ingestion, real-time multi-stakeholder visualization, and high-availability infrastructure — the identical requirements as a national crisis reporting system.
 
-**LINKS Project (UNDP)**
+**LINKS Project / LINKS VEDA (MLIT Japan)**
 
-*(details to be confirmed)* Re:Earth adopted within the UNDP LINKS project, demonstrating proven engagement with UN humanitarian platforms. Data collected by Verified Crisis Mapper is also directly compatible with KoboToolbox, HDX, and the OCHA Information Management Toolbox.
+Eukarya participated in building LINKS VEDA, the data infrastructure platform of Japan's Ministry of Land, Infrastructure, Transport and Tourism cross-sectoral data DX initiative. LINKS VEDA uses large language models to convert unstructured government records (documents, PDFs, paper forms) into structured, machine-readable data at national scale — directly relevant to the crisis reporting context, where administrative data must be processed rapidly under time pressure. Data collected by Verified Crisis Mapper is also directly compatible with KoboToolbox, HDX, and the OCHA Information Management Toolbox.
 
 **Active International Projects**
 
