@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { DamageReport, ReviewMap, ReviewStatus } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
@@ -17,9 +17,22 @@ interface Props {
 }
 
 export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAuthSuccess, onLogout, adminPin }: Props) {
-  const [pinInput, setPinInput] = useState('')
-  const [pinError, setPinError] = useState(false)
+  const [pinInput, setPinInput]     = useState('')
+  const [pinError, setPinError]     = useState(false)
+  const [failCount, setFailCount]   = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number>(0)
+
+  const [, setTick] = useState(0)  // forces re-render for countdown
+  const isLocked = Date.now() < lockedUntil
+  const lockSecsLeft = Math.ceil((lockedUntil - Date.now()) / 1000)
   const [tab,      setTab]      = useState<ReviewTab>('pending')
+
+  // Countdown ticker — only runs while locked
+  useEffect(() => {
+    if (!isLocked) return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [isLocked])
   const [pendingRejectId, setPendingRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason]       = useState('')
 
@@ -63,13 +76,18 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
   }
 
   const handleLogin = () => {
-    if (pinInput.length < 6) return
+    if (pinInput.length < 6 || isLocked) return
     if (pinInput === (adminPin ?? '000000')) {
       onAuthSuccess()
       setPinInput('')
       setPinError(false)
+      setFailCount(0)
     } else {
+      const next = failCount + 1
+      setFailCount(next)
       setPinError(true)
+      // Lockout: 3 failures → 30s, 6+ failures → 120s
+      if (next >= 3) setLockedUntil(Date.now() + (next >= 6 ? 120_000 : 30_000))
       setTimeout(() => { setPinInput(''); setPinError(false) }, 900)
     }
   }
@@ -103,7 +121,10 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
           </div>
 
           <div className="h-5 text-center mb-4">
-            {pinError && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>}
+            {isLocked
+              ? <p className="text-orange-600 text-sm font-medium">🔒 Locked — wait {lockSecsLeft}s</p>
+              : pinError && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>
+            }
           </div>
 
           {/* Numpad */}
@@ -130,13 +151,15 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
           {/* Login button */}
           <button
             onClick={handleLogin}
-            disabled={pinInput.length < 6}
+            disabled={pinInput.length < 6 || isLocked}
             className={`w-full h-14 rounded-2xl text-base font-bold transition-all shadow-sm ${
-              pinInput.length === 6
-                ? 'bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              isLocked
+                ? 'bg-orange-100 text-orange-500 cursor-not-allowed'
+                : pinInput.length === 6
+                  ? 'bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}>
-            Login
+            {isLocked ? `🔒 ${lockSecsLeft}s` : 'Login'}
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-4">Demo PIN: 000000</p>

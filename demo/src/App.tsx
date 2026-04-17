@@ -22,14 +22,33 @@ function loadReviewMap(): ReviewMap {
 }
 
 function ViewerPinGate({ pin, onSuccess, onBack }: { pin: string; onSuccess: () => void; onBack: () => void }) {
-  const [input, setInput] = useState('')
-  const [error, setError] = useState(false)
-  const add = (d: string) => { if (input.length < 6) setInput(p => p + d) }
+  const [input, setInput]         = useState('')
+  const [error, setError]         = useState(false)
+  const [failCount, setFailCount] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number>(0)
+  const [, setTick] = useState(0)
+
+  const isLocked    = Date.now() < lockedUntil
+  const lockSecsLeft = Math.ceil((lockedUntil - Date.now()) / 1000)
+
+  useEffect(() => {
+    if (!isLocked) return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [isLocked])
+
+  const add = (d: string) => { if (!isLocked && input.length < 6) setInput(p => p + d) }
   const del = () => setInput(p => p.slice(0, -1))
   const check = () => {
-    if (input.length < 4) return
+    if (input.length < 4 || isLocked) return
     if (input === pin) { onSuccess() }
-    else { setError(true); setTimeout(() => { setInput(''); setError(false) }, 900) }
+    else {
+      const next = failCount + 1
+      setFailCount(next)
+      setError(true)
+      if (next >= 3) setLockedUntil(Date.now() + (next >= 6 ? 120_000 : 30_000))
+      setTimeout(() => { setInput(''); setError(false) }, 900)
+    }
   }
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-6">
@@ -49,7 +68,10 @@ function ViewerPinGate({ pin, onSuccess, onBack }: { pin: string; onSuccess: () 
           ))}
         </div>
         <div className="h-5 text-center mb-4">
-          {error && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>}
+          {isLocked
+            ? <p className="text-orange-600 text-sm font-medium">🔒 Locked — wait {lockSecsLeft}s</p>
+            : error && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>
+          }
         </div>
         <div className="grid grid-cols-3 gap-3 mb-4">
           {['1','2','3','4','5','6','7','8','9'].map(d => (
@@ -66,10 +88,16 @@ function ViewerPinGate({ pin, onSuccess, onBack }: { pin: string; onSuccess: () 
             </svg>
           </button>
         </div>
-        <button onClick={check} disabled={input.length < 4}
+        <button onClick={check} disabled={input.length < 4 || isLocked}
           className={`w-full h-12 rounded-xl text-base font-bold transition-all ${
-            input.length >= 4 ? 'bg-blue-700 text-white hover:bg-blue-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}>View Map</button>
+            isLocked
+              ? 'bg-orange-100 text-orange-500 cursor-not-allowed'
+              : input.length >= 4
+                ? 'bg-blue-700 text-white hover:bg-blue-800'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}>
+          {isLocked ? `🔒 ${lockSecsLeft}s` : 'View Map'}
+        </button>
         <button onClick={onBack} className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600">← Go back</button>
       </div>
     </div>

@@ -49,6 +49,8 @@ export default function DashboardView({
   const [isPullRefreshing, setIsPullRefreshing] = useState(false)
   /** Coordinates of a map-click pin — shown as "Report here?" strip until dismissed */
   const [mapReportPin, setMapReportPin] = useState<{ lat: number; lng: number } | null>(null)
+  /** True when a layer-specific click (cluster/point) consumed the current click — prevents empty-area handler from also firing */
+  const mapTapConsumedRef = useRef(false)
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const baseReports = useMemo((): DamageReport[] => {
@@ -240,6 +242,7 @@ export default function DashboardView({
     })
 
     map.on('click', 'clusters', async (e) => {
+      mapTapConsumedRef.current = true   // mark consumed so general handler skips
       const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
       if (!feats.length) return
       const clusterId = feats[0].properties!.cluster_id as number
@@ -251,6 +254,7 @@ export default function DashboardView({
     })
 
     map.on('click', 'points', (e) => {
+      mapTapConsumedRef.current = true   // mark consumed so general handler skips
       const feats = map.queryRenderedFeatures(e.point, { layers: ['points'] })
       if (!feats.length) return
       const id = feats[0].properties!.id as string
@@ -258,41 +262,19 @@ export default function DashboardView({
       if (report) {
         setSelectedReport(report)
         setMobileListOpen(false)
-        setMapReportPin(null)   // dismiss any pending pin when viewing an existing report
+        setMapReportPin(null)
       }
     })
 
-    // Empty-area click — offer to file a new report at this location
+    // Empty-area click — offer to file a new report at this location.
+    // Uses a consumed-flag instead of queryRenderedFeatures to work reliably on Android
+    // (queryRenderedFeatures uses a wider hit radius on touch which can mask empty taps).
     map.on('click', (e) => {
-      const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'points'] })
-      if (feats.length > 0) return   // handled by layer-specific handlers above
+      if (mapTapConsumedRef.current) { mapTapConsumedRef.current = false; return }
       setMapReportPin({ lat: e.lngLat.lat, lng: e.lngLat.lng })
       setSelectedReport(null)
       setMobileListOpen(false)
     })
-
-    // iOS Safari reliable tap detection — MapLibre click events can miss empty canvas taps on mobile
-    const canvas = map.getCanvas()
-    let _touchStart: { x: number; y: number } | null = null
-    canvas.addEventListener('touchstart', (e: TouchEvent) => {
-      if (e.touches.length === 1) _touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    }, { passive: true })
-    canvas.addEventListener('touchend', (e: TouchEvent) => {
-      if (!_touchStart || e.changedTouches.length !== 1) return
-      const touch = e.changedTouches[0]
-      if (Math.abs(touch.clientX - _touchStart.x) > 10 || Math.abs(touch.clientY - _touchStart.y) > 10) {
-        _touchStart = null; return  // was a drag, not a tap
-      }
-      _touchStart = null
-      const rect = canvas.getBoundingClientRect()
-      const pt = new maplibregl.Point(touch.clientX - rect.left, touch.clientY - rect.top)
-      const feats = map.queryRenderedFeatures(pt, { layers: ['clusters', 'points'] })
-      if (feats.length > 0) return
-      const lngLat = map.unproject(pt)
-      setMapReportPin({ lat: lngLat.lat, lng: lngLat.lng })
-      setSelectedReport(null)
-      setMobileListOpen(false)
-    }, { passive: true })
 
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
