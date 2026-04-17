@@ -19,6 +19,10 @@ interface Props {
   onRefresh?: () => void
   /** Called when user taps "Open Form" on a map-placed pin — navigates to ReporterView with coords */
   onMapReport?: (lat: number, lng: number) => void
+  /** All available scenarios — if >1, a switcher appears inside the dashboard */
+  scenarios?: DeploymentConfig[]
+  activeScenarioIdx?: number
+  onScenarioChange?: (idx: number) => void
 }
 
 export default function DashboardView({
@@ -31,6 +35,9 @@ export default function DashboardView({
   cmsFetchError = null,
   onRefresh,
   onMapReport,
+  scenarios,
+  activeScenarioIdx = 0,
+  onScenarioChange,
 }: Props) {
   const mapContainer       = useRef<HTMLDivElement>(null)
   const mapRef             = useRef<maplibregl.Map | null>(null)
@@ -241,8 +248,47 @@ export default function DashboardView({
       },
     })
 
+    // ── Touch tap detection (Android Chrome fix) ─────────────────────────
+    // MapLibre's synthetic 'click' from touch is unreliable on Android.
+    // We listen to MapLibre's own touchstart/touchend, wait 80ms for any
+    // layer-specific click events to fire, then place the pin only if none did.
+    let touchStartX = 0, touchStartY = 0
+    let layerConsumed = false  // set by layer click handlers; read by touchend timeout
+
+    map.on('touchstart', (e) => {
+      if (e.originalEvent.touches.length === 1) {
+        touchStartX = e.originalEvent.touches[0].clientX
+        touchStartY = e.originalEvent.touches[0].clientY
+      } else {
+        touchStartX = -9999  // multi-touch (pinch zoom) — disqualify
+      }
+    })
+
+    map.on('touchend', (e) => {
+      if (e.originalEvent.changedTouches.length !== 1) return
+      const t = e.originalEvent.changedTouches[0]
+      const dx = t.clientX - touchStartX
+      const dy = t.clientY - touchStartY
+      if (dx * dx + dy * dy > 144) return  // moved >12px — was a pan gesture
+      layerConsumed = false                // reset; layer click may set it before timeout fires
+      const pos = e.lngLat                 // capture now; e is recycled by the time timeout runs
+      setTimeout(() => {
+        // layerConsumed: a MapLibre layer-click fired after this touchend
+        // mapTapConsumedRef: the general click handler already consumed a layer hit
+        if (layerConsumed || mapTapConsumedRef.current) {
+          mapTapConsumedRef.current = false
+          layerConsumed = false
+          return
+        }
+        setMapReportPin({ lat: pos.lat, lng: pos.lng })
+        setSelectedReport(null)
+        setMobileListOpen(false)
+      }, 80)
+    })
+
     map.on('click', 'clusters', async (e) => {
       mapTapConsumedRef.current = true   // mark consumed so general handler skips
+      layerConsumed = true               // mark for touchend timeout
       const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
       if (!feats.length) return
       const clusterId = feats[0].properties!.cluster_id as number
@@ -255,6 +301,7 @@ export default function DashboardView({
 
     map.on('click', 'points', (e) => {
       mapTapConsumedRef.current = true   // mark consumed so general handler skips
+      layerConsumed = true               // mark for touchend timeout
       const feats = map.queryRenderedFeatures(e.point, { layers: ['points'] })
       if (!feats.length) return
       const id = feats[0].properties!.id as string
@@ -289,6 +336,21 @@ export default function DashboardView({
       {/* ════════════ DESKTOP SIDEBAR ════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-80 bg-white border-r border-gray-200 flex-col overflow-hidden">
         <div className="p-3 border-b border-gray-100">
+          {/* Scenario switcher — only when multiple scenarios exist */}
+          {scenarios && scenarios.length > 1 && onScenarioChange && (
+            <div className="mb-2">
+              <label className="text-[10px] text-gray-400 font-medium block mb-0.5">Scenario</label>
+              <select
+                value={activeScenarioIdx}
+                onChange={e => onScenarioChange(+e.target.value)}
+                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
+              >
+                {scenarios.map((s, i) => (
+                  <option key={i} value={i}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">{config.title}</h2>
             <div className="flex items-center gap-1.5">
@@ -452,6 +514,20 @@ export default function DashboardView({
           </button>
           {statsOpen && (
             <div className="px-2.5 pb-2.5">
+              {/* Scenario switcher (mobile) */}
+              {scenarios && scenarios.length > 1 && onScenarioChange && (
+                <div className="mb-2">
+                  <select
+                    value={activeScenarioIdx}
+                    onChange={e => onScenarioChange(+e.target.value)}
+                    className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 font-medium focus:outline-none"
+                  >
+                    {scenarios.map((s, i) => (
+                      <option key={i} value={i}>{s.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 {(['green','amber','red'] as TrustTier[]).map(t => (
                   <div key={t} className={`rounded-lg p-1.5 text-center ${tierColors[t].bg}`}>

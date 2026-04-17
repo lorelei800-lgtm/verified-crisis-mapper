@@ -157,7 +157,8 @@ export default function App() {
   const handleScenarioChange = (idx: number) => {
     setActiveScenarioIdx(idx)
     setConfig(scenarios[idx])
-    setViewerAuthed(false)  // re-auth for new scenario if protected
+    // viewer_pin is "access to this dashboard deployment", not per-scenario
+    // → do NOT reset viewerAuthed when switching scenarios
   }
 
   // Single source of truth for CMS data — prevents double-polling white screen
@@ -335,17 +336,6 @@ export default function App() {
             <div className="min-w-0">
               <div className="font-semibold text-sm leading-tight truncate">Verified Crisis Mapper</div>
               <div className="text-blue-300 text-xs leading-tight truncate">{config.description ?? config.scenario_label}</div>
-              {scenarios.length > 1 && (
-                <select
-                  value={activeScenarioIdx}
-                  onChange={e => handleScenarioChange(+e.target.value)}
-                  className="text-[10px] bg-blue-700 text-blue-200 border border-blue-500 rounded px-1 py-0.5 max-w-[160px] truncate mt-0.5"
-                >
-                  {scenarios.map((s, i) => (
-                    <option key={i} value={i}>{s.title}</option>
-                  ))}
-                </select>
-              )}
               {pendingOfflineCount > 0 && (
                 <div className="text-[10px] text-orange-300 leading-tight">
                   📵 {pendingOfflineCount} report{pendingOfflineCount > 1 ? 's' : ''} queued offline
@@ -452,6 +442,9 @@ export default function App() {
               cmsFetchError={cmsFetchError}
               onRefresh={() => doFetch()}
               onMapReport={handleMapReport}
+              scenarios={scenarios}
+              activeScenarioIdx={activeScenarioIdx}
+              onScenarioChange={handleScenarioChange}
             />
           ) : (
             <AdminView
