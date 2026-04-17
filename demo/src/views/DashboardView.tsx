@@ -23,6 +23,8 @@ interface Props {
   scenarios?: DeploymentConfig[]
   activeScenarioIdx?: number
   onScenarioChange?: (idx: number) => void
+  /** Navigate to Admin panel (PIN screen) — shown as "Staff Login" in the sidebar */
+  onGoToAdmin?: () => void
 }
 
 export default function DashboardView({
@@ -38,6 +40,7 @@ export default function DashboardView({
   scenarios,
   activeScenarioIdx = 0,
   onScenarioChange,
+  onGoToAdmin,
 }: Props) {
   const mapContainer       = useRef<HTMLDivElement>(null)
   const mapRef             = useRef<maplibregl.Map | null>(null)
@@ -484,6 +487,20 @@ export default function DashboardView({
             )
           })}
         </div>
+
+        {/* Staff login — subtle footer for municipal / government officials */}
+        {onGoToAdmin && (
+          <div className="shrink-0 border-t border-gray-100 px-3 py-2">
+            <button
+              onClick={onGoToAdmin}
+              className="w-full flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors py-1 rounded hover:bg-gray-50">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              Government / Municipal Staff Login
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ════════════ MAP ═════════════════════════════════════════════════════ */}
@@ -557,6 +574,17 @@ export default function DashboardView({
                   </button>
                 ))}
               </div>
+              {/* Mobile staff login — subtle link at bottom of stats overlay */}
+              {onGoToAdmin && (
+                <button
+                  onClick={onGoToAdmin}
+                  className="mt-2 w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors py-1 rounded hover:bg-gray-50 border-t border-gray-100 pt-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  Government / Municipal Staff Login
+                </button>
+              )}
             </div>
           )}
         </div>

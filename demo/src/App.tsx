@@ -471,6 +471,7 @@ export default function App() {
               scenarios={scenarios}
               activeScenarioIdx={activeScenarioIdx}
               onScenarioChange={handleScenarioChange}
+              onGoToAdmin={() => setView('admin')}
             />
           ) : (
             <AdminView
