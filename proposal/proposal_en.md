@@ -74,7 +74,7 @@ This scope transparency reflects our engineering philosophy: a system that hones
 |---|---|
 | **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Offline-first: submissions queue in IndexedDB and sync automatically when connectivity returns. |
 | **Layer 2 — Trust Verification Engine** (Key Differentiator) | Automated data quality assurance: image integrity via EXIF GPS/timestamp consistency + C2PA verification[^8] where available; geospatial consistency via satellite damage analysis cross-reference; cross-report validation via H3 spatial clustering[^9] and outlier detection; Trust Score (0–100) auto-assigned to each report; score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
-| **Layer 3 — Visualization & Decision Support** (React PWA Dashboard) | Mobile-first, installable Progressive Web App dashboard for government and UNDP operators. Displays real-time trust-tier color-coded map (MapLibre GL JS + satellite imagery), priority area auto-ranking, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. Runs on any smartphone or desktop browser — no separate app installation required beyond the single PWA. |
+| **Layer 3 — Visualization & Decision Support** (React PWA Dashboard) | **Primary users: municipal and national government operators, and humanitarian staff (UNDP, OCHA, etc.).** Mobile-first installable PWA displaying real-time trust-tier color-coded map (MapLibre GL JS + satellite imagery), priority area auto-ranking, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. The same app used by field reporters (residents, businesses) doubles as the operator dashboard — no separate installation required. |
 
 ### 3.2 User Journey
 
@@ -85,6 +85,16 @@ This scope transparency reflects our engineering philosophy: a system that hones
 *Fig. 1 — During a community preparedness drill, a local government staff member distributes QR codes. Residents scan once to add the web app to their home screen — it is then available as a familiar icon before any disaster strikes.*
 
 The critical design insight from historical precedent (Haiti 2010 SMS "4636"[^6], Kumamoto 2016 LINE[^7]) is that new tools cannot be learned during a crisis. Adding the app to the home screen takes approximately 10 seconds via QR code scan during a routine preparedness drill. If connectivity drops during a crisis, submissions are queued on-device and transmitted automatically when any connection returns — no user action required.
+
+**Drill-Mode Reporting: Building Readiness Before Disaster Strikes**
+
+Beyond simple installation, community preparedness drills offer an opportunity for residents and local businesses to submit actual practice reports during the exercise — building muscle memory for the real event:
+
+- **Live drill submissions:** Participants submit flagged demo reports ("This is a drill") during a scheduled municipal exercise, experiencing the full form flow — photo capture, GPS acquisition, damage classification — before any real emergency.
+- **Integration with community disaster plans and business BCP:** Designated reporters within neighborhood disaster-response groups and corporate business continuity plans can be pre-assigned and trained before a crisis.
+- **Operator feedback loop:** Drill submissions allow government operators to review Trust Score distributions in advance, identifying and correcting GPS accuracy issues or infrastructure misclassifications before they affect real response decisions.
+
+This drill integration mirrors the lesson of Kumamoto 2016 LINE adoption: tools that are already familiar are used naturally under stress. Verified Crisis Mapper is designed to be that tool.
 
 #### Phase 2 — The Reporting Window: 2–72 Hours Post-Disaster
 
@@ -103,7 +113,7 @@ Offline resilience: submissions queue in IndexedDB; data transmits automatically
 
 ![Phase 3 — Government and UNDP officials view Verified Crisis Mapper dashboard](images/phase_3.png)
 
-*Fig. 3 — Government and UNDP officials in a joint operations center view the Verified Crisis Mapper dashboard. Trust-tier color-coded pins (green/amber/red) and satellite imagery guide resource deployment decisions. The same PWA used for field reporting doubles as the operator dashboard — a single codebase for all users.*
+*Fig. 3 — Municipal, national government, and UNDP officials in a joint operations center view the Verified Crisis Mapper dashboard. Trust-tier color-coded pins (green/amber/red) and satellite imagery guide resource deployment decisions. The same PWA used by field reporters (residents, businesses) doubles as the operator dashboard — a single codebase for all users.*
 
 ### 3.3 Trust Score Engine — Technical Design
 
@@ -163,10 +173,12 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 
 ## 6. Implementation Plan
 
+> **Scope of this submission:** This proposal covers Phase 1 (Core Platform MVP). The live prototype at submission demonstrates TRL 4–5 readiness for this phase. The $50,000 award will fund Phase 2 and beyond — specifically: full Trust Score Engine implementation (live C2PA verification, satellite API), WhatsApp Route C integration, multilingual UI completion, and Phase 3 field testing deployment.
+
 | Phase | Timeline | Title | Deliverables |
 |---|---|---|---|
-| Phase 1 | 0–3 months | Core Platform MVP | Re:Earth CMS schema, PWA form, basic map visualization, trust score MVP |
-| Phase 2 | 3–6 months | Verification Engine | C2PA module, satellite API integration, geospatial consistency engine, full dashboard UI |
+| Phase 1 | 0–3 months | Core Platform MVP | Re:Earth CMS schema, PWA form, basic map visualization, Trust Score MVP ※**demonstrated at submission** |
+| Phase 2 | 3–6 months | Verification Engine *(award-funded)* | C2PA module, satellite API integration, geospatial consistency engine, WhatsApp Route C, full dashboard UI |
 | Phase 3 | 6–12 months | Field Testing | Pilot in UNDP target region, multilingual UI (Arabic, French, Spanish, Swahili), offline optimization |
 | Phase 4 | 12+ months | Scale & Future Tech | Multi-region deployment, OCHA/WFP API integration, D2C satellite connectivity exploration |
 
