@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import type { DamageLevel, InfraType, SubmissionChannel, DamageReport, DeploymentConfig } from '../types'
 import { calculateTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
@@ -66,6 +66,12 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
   const [isOnlineLocal, setIsOnlineLocal] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const isOnline = isOnlineProp !== undefined ? isOnlineProp : isOnlineLocal
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const dmgLabel = useMemo(() => ({
+    minimal:   config.label_damage_minimal   ?? damageLevelLabel.minimal,
+    partial:   config.label_damage_partial   ?? damageLevelLabel.partial,
+    destroyed: config.label_damage_destroyed ?? damageLevelLabel.destroyed,
+  }), [config])
 
   // Low-bandwidth mode: always ON — disaster field conditions optimised.
   // Compresses photos to 640px / 60% (~150 KB) and hides the OSM iframe preview.
@@ -553,7 +559,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
                 <span className={`w-3 h-3 rounded-full shrink-0 ${
                   level === 'destroyed' ? 'bg-red-400' : level === 'partial' ? 'bg-amber-400' : 'bg-green-400'
                 } ${damageLevel === level ? 'bg-white' : ''}`} />
-                {damageLevelLabel[level]}
+                {dmgLabel[level]}
               </button>
             ))}
           </div>

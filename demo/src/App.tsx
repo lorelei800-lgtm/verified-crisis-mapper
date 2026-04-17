@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import type { DamageReport, DeploymentConfig, ReviewMap, ReviewStatus } from './types'
-import { fetchDeploymentConfig, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG, uploadAsset, createReportItem } from './services/cmsApi'
+import { fetchAllScenarios, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG, uploadAsset, createReportItem } from './services/cmsApi'
 import { getAllQueued, removeQueued, incrementAttempts, countQueued } from './services/offlineQueue'
 import { CMS } from './config'
 import { mockReports } from './data/mockReports'
@@ -21,12 +21,70 @@ function loadReviewMap(): ReviewMap {
   }
 }
 
+function ViewerPinGate({ pin, onSuccess, onBack }: { pin: string; onSuccess: () => void; onBack: () => void }) {
+  const [input, setInput] = useState('')
+  const [error, setError] = useState(false)
+  const add = (d: string) => { if (input.length < 6) setInput(p => p + d) }
+  const del = () => setInput(p => p.slice(0, -1))
+  const check = () => {
+    if (input.length < 4) return
+    if (input === pin) { onSuccess() }
+    else { setError(true); setTimeout(() => { setInput(''); setError(false) }, 900) }
+  }
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-6">
+      <div className="w-full max-w-xs">
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">🗺️</div>
+          <h2 className="text-xl font-bold text-gray-800">Viewer Access</h2>
+          <p className="text-sm text-gray-500 mt-1">Enter the PIN to view the damage map</p>
+        </div>
+        <div className={`flex justify-center gap-3 mb-3 ${error ? 'animate-bounce' : ''}`}>
+          {[0,1,2,3,4,5].map(i => (
+            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+              i < input.length
+                ? error ? 'bg-red-500 border-red-500' : 'bg-blue-600 border-blue-600'
+                : 'border-gray-300 bg-transparent'
+            }`}/>
+          ))}
+        </div>
+        <div className="h-5 text-center mb-4">
+          {error && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>}
+        </div>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {['1','2','3','4','5','6','7','8','9'].map(d => (
+            <button key={d} onClick={() => add(d)}
+              className="h-12 rounded-xl bg-white border border-gray-200 text-xl font-semibold text-gray-800 shadow-sm active:bg-gray-100 hover:bg-gray-50">
+              {d}
+            </button>
+          ))}
+          <div/>
+          <button onClick={() => add('0')} className="h-12 rounded-xl bg-white border border-gray-200 text-xl font-semibold text-gray-800 shadow-sm active:bg-gray-100 hover:bg-gray-50">0</button>
+          <button onClick={del} className="h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center shadow-sm active:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
+            </svg>
+          </button>
+        </div>
+        <button onClick={check} disabled={input.length < 4}
+          className={`w-full h-12 rounded-xl text-base font-bold transition-all ${
+            input.length >= 4 ? 'bg-blue-700 text-white hover:bg-blue-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}>View Map</button>
+        <button onClick={onBack} className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600">← Go back</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [view, setView]                     = useState<View>('reporter')
   // Start empty every session — CMS is the source of truth across devices.
   // Submitted reports appear immediately in this session only (not loaded from localStorage).
   const [submittedReports, setSubmittedReports] = useState<DamageReport[]>([])
   const [config, setConfig]                 = useState<DeploymentConfig>(DEFAULT_CONFIG)
+  const [scenarios, setScenarios]           = useState<DeploymentConfig[]>([DEFAULT_CONFIG])
+  const [activeScenarioIdx, setActiveScenarioIdx] = useState(0)
+  const [viewerAuthed, setViewerAuthed]     = useState(false)
   const [unseenCount, setUnseenCount]       = useState(0)
   const [newReportIds, setNewReportIds]     = useState<Set<string>>(new Set())
   const [reviewMap, setReviewMap]           = useState<ReviewMap>(loadReviewMap)
@@ -62,8 +120,17 @@ export default function App() {
   const notifEnabled = useRef(false)
 
   useEffect(() => {
-    fetchDeploymentConfig().then(setConfig)
+    fetchAllScenarios().then(all => {
+      setScenarios(all)
+      setConfig(all[0])
+    })
   }, [])
+
+  const handleScenarioChange = (idx: number) => {
+    setActiveScenarioIdx(idx)
+    setConfig(scenarios[idx])
+    setViewerAuthed(false)  // re-auth for new scenario if protected
+  }
 
   // Single source of truth for CMS data — prevents double-polling white screen
   const doFetch = (isInitial = false) => {
@@ -239,7 +306,18 @@ export default function App() {
             </button>
             <div className="min-w-0">
               <div className="font-semibold text-sm leading-tight truncate">Verified Crisis Mapper</div>
-              <div className="text-blue-300 text-xs leading-tight truncate">{config.scenario_label}</div>
+              <div className="text-blue-300 text-xs leading-tight truncate">{config.description ?? config.scenario_label}</div>
+              {scenarios.length > 1 && (
+                <select
+                  value={activeScenarioIdx}
+                  onChange={e => handleScenarioChange(+e.target.value)}
+                  className="text-[10px] bg-blue-700 text-blue-200 border border-blue-500 rounded px-1 py-0.5 max-w-[160px] truncate mt-0.5"
+                >
+                  {scenarios.map((s, i) => (
+                    <option key={i} value={i}>{s.title}</option>
+                  ))}
+                </select>
+              )}
               {pendingOfflineCount > 0 && (
                 <div className="text-[10px] text-orange-300 leading-tight">
                   📵 {pendingOfflineCount} report{pendingOfflineCount > 1 ? 's' : ''} queued offline
@@ -328,6 +406,12 @@ export default function App() {
               existingReports={CMS.enabled ? cmsReports : mockReports}
               isOnline={isOnline}
               prefilledLocation={mapReportLocation ?? undefined}
+            />
+          ) : view === 'dashboard' && config.viewer_pin && !viewerAuthed ? (
+            <ViewerPinGate
+              pin={config.viewer_pin}
+              onSuccess={() => setViewerAuthed(true)}
+              onBack={() => setView('reporter')}
             />
           ) : view === 'dashboard' ? (
             <DashboardView

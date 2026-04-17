@@ -45,6 +45,7 @@ export default function DashboardView({
   const [infraFilter,    setInfraFilter]    = useState<InfraType | 'all'>('all')
   const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
+  const [statsOpen,      setStatsOpen]      = useState(true)
   const [isPullRefreshing, setIsPullRefreshing] = useState(false)
   /** Coordinates of a map-click pin — shown as "Report here?" strip until dismissed */
   const [mapReportPin, setMapReportPin] = useState<{ lat: number; lng: number } | null>(null)
@@ -92,6 +93,12 @@ export default function DashboardView({
   filteredReportsRef.current = filteredReports
 
   const isLoading = CMS.enabled && isCmsLoading && cmsReports === null
+
+  const dmgLabel = useMemo(() => ({
+    minimal:   config.label_damage_minimal   ?? damageLevelLabel.minimal,
+    partial:   config.label_damage_partial   ?? damageLevelLabel.partial,
+    destroyed: config.label_damage_destroyed ?? damageLevelLabel.destroyed,
+  }), [config])
 
   // Pull-to-refresh for mobile list
   useEffect(() => {
@@ -264,6 +271,29 @@ export default function DashboardView({
       setMobileListOpen(false)
     })
 
+    // iOS Safari reliable tap detection — MapLibre click events can miss empty canvas taps on mobile
+    const canvas = map.getCanvas()
+    let _touchStart: { x: number; y: number } | null = null
+    canvas.addEventListener('touchstart', (e: TouchEvent) => {
+      if (e.touches.length === 1) _touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }, { passive: true })
+    canvas.addEventListener('touchend', (e: TouchEvent) => {
+      if (!_touchStart || e.changedTouches.length !== 1) return
+      const touch = e.changedTouches[0]
+      if (Math.abs(touch.clientX - _touchStart.x) > 10 || Math.abs(touch.clientY - _touchStart.y) > 10) {
+        _touchStart = null; return  // was a drag, not a tap
+      }
+      _touchStart = null
+      const rect = canvas.getBoundingClientRect()
+      const pt = new maplibregl.Point(touch.clientX - rect.left, touch.clientY - rect.top)
+      const feats = map.queryRenderedFeatures(pt, { layers: ['clusters', 'points'] })
+      if (feats.length > 0) return
+      const lngLat = map.unproject(pt)
+      setMapReportPin({ lat: lngLat.lat, lng: lngLat.lng })
+      setSelectedReport(null)
+      setMobileListOpen(false)
+    }, { passive: true })
+
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
     map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
@@ -291,6 +321,9 @@ export default function DashboardView({
               )}
             </div>
           </div>
+          {!CMS.enabled && (
+            <div className="mb-2 text-[10px] bg-amber-50 border border-amber-200 rounded px-2 py-1 text-amber-700">⚠ Demo mode — not connected to Re:Earth CMS</div>
+          )}
           {submittedReports.length > 0 && (
             <div className="mb-2 text-xs bg-green-50 border border-green-200 rounded px-2 py-1 text-green-700">
               +{submittedReports.length} report{submittedReports.length > 1 ? 's' : ''} this session
@@ -365,7 +398,19 @@ export default function DashboardView({
             <div key={i} className="px-3 py-2.5 border-b border-gray-100 animate-pulse">
               <div className="flex items-start gap-2"><div className="w-3 h-3 rounded-full bg-gray-200 mt-0.5 shrink-0"/><div className="flex-1 space-y-1.5"><div className="h-3 bg-gray-200 rounded w-3/4"/><div className="h-2.5 bg-gray-100 rounded w-1/2"/></div></div>
             </div>
-          )) : filteredReports.map(report => {
+          )) : !isLoading && filteredReports.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-3">
+              <div className="text-4xl">📭</div>
+              <p className="text-sm font-semibold text-gray-600">
+                {CMS.enabled ? 'No reports yet' : 'Demo data hidden by filters'}
+              </p>
+              <p className="text-xs text-gray-400">
+                {CMS.enabled
+                  ? 'Be the first to submit a damage report'
+                  : 'Clear filters to see all demo reports'}
+              </p>
+            </div>
+          ) : filteredReports.map(report => {
             const isNew     = newReportIds.has(report.id)
             const inArea    = isWithinArea(report.lat, report.lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
             const reviewed  = reviewMap[report.id]
@@ -385,7 +430,7 @@ export default function DashboardView({
                         <span className="text-xs font-bold" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
+                    <div className="text-xs text-gray-500 truncate">{report.district} · {dmgLabel[report.damageLevel]}</div>
                     <div className="text-xs text-gray-400 truncate">{report.landmark}</div>
                     <div className="text-[10px] text-gray-300 flex items-center gap-1.5">
                       <span>{formatDate(report.timestamp)}</span>
@@ -404,52 +449,60 @@ export default function DashboardView({
         <div ref={mapContainer} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}}/>
 
         {/* ── Mobile stats overlay ── */}
-        <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md p-2.5">
-          <div className="flex items-center justify-between mb-2">
+        <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md overflow-hidden">
+          <button onClick={() => setStatsOpen(v => !v)}
+            className="w-full flex items-center justify-between px-2.5 py-2 gap-1">
             <span className="text-xs font-semibold text-gray-700">{config.title}</span>
             <div className="flex items-center gap-1.5">
               <CmsBadge isLoading={isLoading} cmsError={cmsFetchError} />
               {CMS.enabled && (
-                <button onClick={onRefresh} title="Refresh" disabled={isCmsLoading}
+                <button onClick={e => { e.stopPropagation(); onRefresh?.() }} title="Refresh" disabled={isCmsLoading}
                   className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 disabled:opacity-50">
                   <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 ${isCmsLoading ? 'animate-spin text-blue-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
               )}
+              <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${statsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
             </div>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 mb-2">
-            {(['green','amber','red'] as TrustTier[]).map(t => (
-              <div key={t} className={`rounded-lg p-1.5 text-center ${tierColors[t].bg}`}>
-                <div className={`text-base font-bold ${tierColors[t].text}`}>{isLoading ? '—' : stats[t]}</div>
-                <div className={`text-[10px] ${tierColors[t].text} opacity-80`}>{getTierLabel(t)}</div>
+          </button>
+          {statsOpen && (
+            <div className="px-2.5 pb-2.5">
+              <div className="grid grid-cols-3 gap-1.5 mb-2">
+                {(['green','amber','red'] as TrustTier[]).map(t => (
+                  <div key={t} className={`rounded-lg p-1.5 text-center ${tierColors[t].bg}`}>
+                    <div className={`text-base font-bold ${tierColors[t].text}`}>{isLoading ? '—' : stats[t]}</div>
+                    <div className={`text-[10px] ${tierColors[t].text} opacity-80`}>{getTierLabel(t)}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {tierFilters.map(f => (
-              <button key={f.tier} onClick={() => setTierFilter(f.tier)}
-                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                  tierFilter === f.tier
-                    ? f.tier==='all' ? 'bg-gray-700 text-white' : f.tier==='green' ? 'bg-green-600 text-white' : f.tier==='amber' ? 'bg-amber-500 text-white' : 'bg-red-600 text-white'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>{f.label}</button>
-            ))}
-          </div>
-          {/* Mobile infra filter */}
-          <div className="flex gap-1 overflow-x-auto mt-1.5 pb-0.5" style={{scrollbarWidth:'none'}}>
-            <button onClick={() => setInfraFilter('all')}
-              className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
-              All Types
-            </button>
-            {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => setInfraFilter(key)}
-                className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
+              <div className="flex gap-1 flex-wrap">
+                {tierFilters.map(f => (
+                  <button key={f.tier} onClick={() => setTierFilter(f.tier)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      tierFilter === f.tier
+                        ? f.tier==='all' ? 'bg-gray-700 text-white' : f.tier==='green' ? 'bg-green-600 text-white' : f.tier==='amber' ? 'bg-amber-500 text-white' : 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>{f.label}</button>
+                ))}
+              </div>
+              {/* Mobile infra filter */}
+              <div className="flex gap-1 overflow-x-auto mt-1.5 pb-0.5" style={{scrollbarWidth:'none'}}>
+                <button onClick={() => setInfraFilter('all')}
+                  className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  All Types
+                </button>
+                {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
+                  <button key={key} onClick={() => setInfraFilter(key)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Desktop legend ── */}
@@ -498,7 +551,7 @@ export default function DashboardView({
             <div className="p-3 space-y-1.5 text-xs">
               <InfoRow label="District" value={selectedReport.district}/>
               <InfoRow label="Time"     value={formatDate(selectedReport.timestamp)}/>
-              <InfoRow label="Damage"   value={damageLevelLabel[selectedReport.damageLevel]}/>
+              <InfoRow label="Damage"   value={dmgLabel[selectedReport.damageLevel]}/>
               <InfoRow label="Type"     value={infraTypeLabel[selectedReport.infraType]}/>
               <InfoRow label="Channel"  value={channelLabel[selectedReport.channel]}/>
               <InfoRow label="C2PA"     value={selectedReport.hasC2PA?'Verified ✓':'Not available'}/>
@@ -606,7 +659,7 @@ export default function DashboardView({
                             <span className="text-sm font-bold" style={{color:tierColors[report.tier].hex}}>{report.trustScore.total}</span>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-500 truncate">{report.district} · {damageLevelLabel[report.damageLevel]}</div>
+                        <div className="text-xs text-gray-500 truncate">{report.district} · {dmgLabel[report.damageLevel]}</div>
                         <div className="text-[10px] text-gray-400">{formatDate(report.timestamp)}</div>
                       </div>
                     </div>
@@ -649,7 +702,7 @@ export default function DashboardView({
               <div className="p-4 space-y-2 text-sm">
                 <InfoRowLg label="District" value={selectedReport.district}/>
                 <InfoRowLg label="Time"     value={formatDate(selectedReport.timestamp)}/>
-                <InfoRowLg label="Damage"   value={damageLevelLabel[selectedReport.damageLevel]}/>
+                <InfoRowLg label="Damage"   value={dmgLabel[selectedReport.damageLevel]}/>
                 <InfoRowLg label="Type"     value={infraTypeLabel[selectedReport.infraType]}/>
                 <InfoRowLg label="Channel"  value={channelLabel[selectedReport.channel]}/>
                 <InfoRowLg label="C2PA"     value={selectedReport.hasC2PA?'Verified ✓':'Not available'}/>

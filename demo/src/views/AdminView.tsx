@@ -12,7 +12,7 @@ interface Props {
   isAuthed: boolean
   onAuthSuccess: () => void
   onLogout: () => void
-  /** 4-digit PIN from CMS deployment-config; falls back to '0000' when not set */
+  /** 6-digit PIN from CMS deployment-config; falls back to '000000' when not set */
   adminPin?: string
 }
 
@@ -54,7 +54,7 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
   // ── PIN handlers ─────────────────────────────────────────────────────────────
 
   const handleKey = (digit: string) => {
-    if (pinInput.length >= 4) return
+    if (pinInput.length >= 6) return
     setPinInput(p => p + digit)
   }
 
@@ -63,8 +63,8 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
   }
 
   const handleLogin = () => {
-    if (pinInput.length < 4) return
-    if (pinInput === (adminPin ?? '0000')) {
+    if (pinInput.length < 6) return
+    if (pinInput === (adminPin ?? '000000')) {
       onAuthSuccess()
       setPinInput('')
       setPinError(false)
@@ -88,12 +88,12 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
               </svg>
             </div>
             <h2 className="text-xl font-bold text-gray-800">Admin Login</h2>
-            <p className="text-sm text-gray-500 mt-1">Enter your 4-digit PIN to continue</p>
+            <p className="text-sm text-gray-500 mt-1">Enter your 6-digit PIN to continue</p>
           </div>
 
           {/* PIN dots */}
           <div className={`flex justify-center gap-4 mb-3 ${pinError ? 'animate-bounce' : ''}`}>
-            {[0, 1, 2, 3].map(i => (
+            {[0, 1, 2, 3, 4, 5].map(i => (
               <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-150 ${
                 i < pinInput.length
                   ? pinError ? 'bg-red-500 border-red-500' : 'bg-blue-700 border-blue-700'
@@ -130,16 +130,16 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
           {/* Login button */}
           <button
             onClick={handleLogin}
-            disabled={pinInput.length < 4}
+            disabled={pinInput.length < 6}
             className={`w-full h-14 rounded-2xl text-base font-bold transition-all shadow-sm ${
-              pinInput.length === 4
+              pinInput.length === 6
                 ? 'bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}>
             Login
           </button>
 
-          <p className="text-center text-xs text-gray-400 mt-4">Demo PIN: 0000</p>
+          <p className="text-center text-xs text-gray-400 mt-4">Demo PIN: 000000</p>
         </div>
       </div>
     )

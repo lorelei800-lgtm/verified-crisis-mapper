@@ -45,7 +45,7 @@ export interface DamageReport {
 export interface DeploymentConfig {
   // Display strings
   title:          string   // e.g. "Bangkok Flood Response"
-  scenario_label: string   // e.g. "Bangkok Flood, October 2026"
+  scenario_label: string   // e.g. "Bangkok Flood, October 2026" // legacy; new deployments prefer description
   subtitle:       string   // e.g. "Don Mueang / Pathum Thani"
   // Map initial view bounds
   bounds_sw_lat:  number
@@ -56,9 +56,16 @@ export interface DeploymentConfig {
   area_center_lat: number
   area_center_lng: number
   area_radius_km:  number  // reports outside this radius get geo score = 0
-  // Admin access — managed centrally from CMS so HQ can rotate without code changes.
-  // Note: stored in the public-readable model; the PIN is a convenience gate, not crypto auth.
-  admin_pin?: string  // 4-digit PIN; falls back to '0000' when not set in CMS
+  // Access control (managed from CMS — rotate PINs without touching code)
+  // Note: stored in public-readable deployment-config; convenience gate, not crypto auth.
+  admin_pin?:  string   // 6-digit PIN for Admin panel; fallback '000000' if not set
+  viewer_pin?: string   // if set, Dashboard requires this PIN; open by default if unset
+  // Localized damage level labels — override English defaults for regional deployments
+  label_damage_minimal?:   string   // e.g. "被害軽微" / "Level 1" / "Catégorie 1"
+  label_damage_partial?:   string
+  label_damage_destroyed?: string
+  // Schema simplification: new deployments use description; scenario_label kept for compat
+  description?: string   // concise event+area string shown in header; falls back to scenario_label
 }
 
 export type ReviewStatus = 'approved' | 'rejected'

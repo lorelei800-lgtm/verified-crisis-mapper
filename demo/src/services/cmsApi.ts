@@ -140,6 +140,36 @@ export async function fetchCmsReports(): Promise<{ reports: DamageReport[]; revi
 
 // ─── Public API: deployment config ──────────────────────────────────────────
 
+// ─── Shared config parser ────────────────────────────────────────────────────
+
+function parseConfigItem(item: Record<string, unknown>): DeploymentConfig {
+  const n = (key: string, fallback: number): number =>
+    typeof item[key] === 'number' ? (item[key] as number) : fallback
+  const s = (key: string, fallback: string): string =>
+    typeof item[key] === 'string' ? (item[key] as string) : fallback
+  const sOpt = (key: string): string | undefined =>
+    typeof item[key] === 'string' && (item[key] as string) !== '' ? (item[key] as string) : undefined
+
+  return {
+    title:                   s('title',           DEFAULT_CONFIG.title),
+    scenario_label:          s('scenario_label',  DEFAULT_CONFIG.scenario_label),
+    subtitle:                s('subtitle',        DEFAULT_CONFIG.subtitle),
+    bounds_sw_lat:           n('bounds_sw_lat',   DEFAULT_CONFIG.bounds_sw_lat),
+    bounds_sw_lng:           n('bounds_sw_lng',   DEFAULT_CONFIG.bounds_sw_lng),
+    bounds_ne_lat:           n('bounds_ne_lat',   DEFAULT_CONFIG.bounds_ne_lat),
+    bounds_ne_lng:           n('bounds_ne_lng',   DEFAULT_CONFIG.bounds_ne_lng),
+    area_center_lat:         n('area_center_lat', DEFAULT_CONFIG.area_center_lat),
+    area_center_lng:         n('area_center_lng', DEFAULT_CONFIG.area_center_lng),
+    area_radius_km:          n('area_radius_km',  DEFAULT_CONFIG.area_radius_km),
+    admin_pin:               sOpt('admin_pin'),
+    viewer_pin:              sOpt('viewer_pin'),
+    label_damage_minimal:    sOpt('label_damage_minimal'),
+    label_damage_partial:    sOpt('label_damage_partial'),
+    label_damage_destroyed:  sOpt('label_damage_destroyed'),
+    description:             sOpt('description'),
+  }
+}
+
 /**
  * Fetch the deployment configuration from Re:Earth CMS `deployment-config` model.
  * Returns DEFAULT_CONFIG when CMS is not configured or the fetch fails.
@@ -159,28 +189,26 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
     const item = data.results?.[0]
     if (!item) return DEFAULT_CONFIG
 
-    const n = (key: string, fallback: number): number =>
-      typeof item[key] === 'number' ? (item[key] as number) : fallback
-    const s = (key: string, fallback: string): string =>
-      typeof item[key] === 'string' ? (item[key] as string) : fallback
-
-    const adminPin = s('admin_pin', '')
-    return {
-      title:           s('title',           DEFAULT_CONFIG.title),
-      scenario_label:  s('scenario_label',  DEFAULT_CONFIG.scenario_label),
-      subtitle:        s('subtitle',        DEFAULT_CONFIG.subtitle),
-      bounds_sw_lat:   n('bounds_sw_lat',   DEFAULT_CONFIG.bounds_sw_lat),
-      bounds_sw_lng:   n('bounds_sw_lng',   DEFAULT_CONFIG.bounds_sw_lng),
-      bounds_ne_lat:   n('bounds_ne_lat',   DEFAULT_CONFIG.bounds_ne_lat),
-      bounds_ne_lng:   n('bounds_ne_lng',   DEFAULT_CONFIG.bounds_ne_lng),
-      area_center_lat: n('area_center_lat', DEFAULT_CONFIG.area_center_lat),
-      area_center_lng: n('area_center_lng', DEFAULT_CONFIG.area_center_lng),
-      area_radius_km:  n('area_radius_km',  DEFAULT_CONFIG.area_radius_km),
-      admin_pin:       adminPin || undefined,   // undefined → AdminView falls back to '0000'
-    }
+    return parseConfigItem(item)
   } catch (err) {
     console.warn('[CMS] fetchDeploymentConfig failed — using defaults', err)
     return DEFAULT_CONFIG
+  }
+}
+
+export async function fetchAllScenarios(): Promise<DeploymentConfig[]> {
+  if (!CMS.enabled) return [DEFAULT_CONFIG]
+  const url = `${CMS.baseUrl}/api/p/${CMS.project}/deployment-config?perPage=100`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+    const data: { results: Array<Record<string, unknown>> } = await res.json()
+    const items = data.results ?? []
+    if (items.length === 0) return [DEFAULT_CONFIG]
+    return items.map(parseConfigItem)
+  } catch (err) {
+    console.warn('[CMS] fetchAllScenarios failed — using default', err)
+    return [DEFAULT_CONFIG]
   }
 }
 
