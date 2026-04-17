@@ -147,35 +147,42 @@ export default function App() {
     return () => clearInterval(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Merged list: CMS + session submitted (deduped) — ALL scenarios
-  const allKnownReports = useMemo(() => {
-    const base = CMS.enabled ? cmsReports : mockReports
-    const sessionIds = new Set(submittedReports.map(r => r.id))
-    return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
-  }, [cmsReports, submittedReports])
-
   /**
-   * Reports scoped to the active scenario's geographic area.
+   * CMS reports scoped to the active scenario's geographic area.
    *
-   * Design rule:
-   *   ?scenario=xxx  →  show only reports within that scenario's area_radius_km.
-   *                     Municipal staff (Fukui / Chiyoda) each see their own data.
-   *   no param       →  show all reports across all scenarios (central govt view).
+   * Scoping rule:
+   *   ?scenario=xxx  → filter by isWithinArea(area_center, area_radius_km).
+   *                    Fukui staff see only Fukui reports; Chiyoda staff see only Chiyoda.
+   *   no param       → no filtering — central-govt overview of all scenarios.
    *
-   * Phase 2 (future): replace geographic filter with an explicit `scenario_label`
+   * This is the single source of truth for area filtering.
+   * Both Dashboard and Admin consume this filtered list.
+   *
+   * Phase 2 (future): replace geographic proximity with an explicit `scenario_label`
    * field stored on each CMS report item for unambiguous scoping.
    */
-  const adminScopedReports = useMemo(() => {
-    if (!hasScenarioParam) return allKnownReports   // central govt: see everything
-    return allKnownReports.filter(r =>
+  const scenarioCmsReports = useMemo(() => {
+    if (!hasScenarioParam) return cmsReports
+    return cmsReports.filter(r =>
       isWithinArea(r.lat, r.lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
     )
-  }, [allKnownReports, config, hasScenarioParam])
+  }, [cmsReports, config, hasScenarioParam])
 
-  // Pending review count — scoped to the active scenario (same logic as adminScopedReports)
+  /**
+   * All known reports for the active scenario: session-submitted + scoped CMS/mock.
+   * Already area-filtered via scenarioCmsReports — no second pass needed.
+   * Consumed by both AdminView (reports prop) and handleReview.
+   */
+  const allKnownReports = useMemo(() => {
+    const base = CMS.enabled ? scenarioCmsReports : mockReports
+    const sessionIds = new Set(submittedReports.map(r => r.id))
+    return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
+  }, [scenarioCmsReports, submittedReports])
+
+  // Pending review count badge — scoped (allKnownReports is already scoped)
   const adminPendingCount = useMemo(
-    () => adminScopedReports.filter(r => !reviewMap[r.id]).length,
-    [adminScopedReports, reviewMap]
+    () => allKnownReports.filter(r => !reviewMap[r.id]).length,
+    [allKnownReports, reviewMap]
   )
 
   // Persist review map
@@ -280,7 +287,7 @@ export default function App() {
     // Optimistic local update
     setReviewMap(prev => ({ ...prev, [id]: status }))
     // Write back to CMS so other devices see the change
-    const report = adminScopedReports.find(r => r.id === id)
+    const report = allKnownReports.find(r => r.id === id)
     console.info('[Admin] handleReview', id, status, reason ?? '(no reason)', 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
     if (report?.cmsId) {
       updateReviewStatus(report.cmsId, status, reason).then(ok => {
@@ -423,7 +430,7 @@ export default function App() {
               submittedReports={submittedReports}
               newReportIds={newReportIds}
               reviewMap={reviewMap}
-              cmsReports={CMS.enabled ? cmsReports : null}
+              cmsReports={CMS.enabled ? scenarioCmsReports : null}
               isCmsLoading={isCmsLoading}
               cmsFetchError={cmsFetchError}
               onRefresh={() => doFetch()}
@@ -432,7 +439,7 @@ export default function App() {
             />
           ) : (
             <AdminView
-              reports={adminScopedReports}
+              reports={allKnownReports}
               reviewMap={reviewMap}
               onReview={handleReview}
               isAuthed={adminAuthed}
