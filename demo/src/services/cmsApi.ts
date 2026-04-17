@@ -21,13 +21,13 @@ export const DEFAULT_CONFIG: DeploymentConfig = {
   title:           'Tokyo Flood Response',
   scenario_label:  'Tokyo Flood, Kanda River Basin, October 2026',
   subtitle:        'Chiyoda / Kanda',
-  bounds_sw_lat:   35.64,
-  bounds_sw_lng:   139.70,
-  bounds_ne_lat:   35.74,
-  bounds_ne_lng:   139.79,
-  area_center_lat: 35.6940,
-  area_center_lng: 139.7534,
-  area_radius_km:  5,
+  bounds_sw_lat:   35.685,
+  bounds_sw_lng:   139.755,
+  bounds_ne_lat:   35.713,
+  bounds_ne_lng:   139.790,
+  area_center_lat: 35.6990,
+  area_center_lng: 139.7710,
+  area_radius_km:  1.5,
 }
 
 // ─── CMS response shapes ────────────────────────────────────────────────────
