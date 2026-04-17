@@ -1,5 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react'
 import type { DamageLevel, InfraType, SubmissionChannel, DamageReport, DeploymentConfig } from '../types'
+
+// Lazy-load the map picker so MapLibre is only bundled when the user opens it
+const MapPickerOverlay = lazy(() => import('./MapPickerOverlay'))
 import { calculateTrustScore, getTier, getTierLabel, getTierDescription } from '../utils/trustScore'
 import { tierColors, damageLevelLabel, infraTypeLabel } from '../utils/trustColors'
 import { uploadAsset, createReportItem } from '../services/cmsApi'
@@ -66,6 +69,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
   const [isOnlineLocal, setIsOnlineLocal] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const isOnline = isOnlineProp !== undefined ? isOnlineProp : isOnlineLocal
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showMapPicker, setShowMapPicker] = useState(false)
 
   const dmgLabel = useMemo(() => ({
     minimal:   config.label_damage_minimal   ?? damageLevelLabel.minimal,
@@ -116,12 +120,16 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
   // ── Pre-fill location when coming from dashboard map ─────────────────────
   useEffect(() => {
     if (!prefilledLocation) return
-    const { lat, lng } = prefilledLocation
+    applyLocation(prefilledLocation.lat, prefilledLocation.lng, 50)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])   // run once on mount — prefilledLocation is stable per component instance
+
+  // ── Shared helper: apply a lat/lng and reverse-geocode ────────────────────
+  const applyLocation = (lat: number, lng: number, accuracy: number) => {
     setGpsLat(lat); setGpsLng(lng)
     setGpsStatus('acquired')
-    setGpsAccuracy(50)   // map-tap accuracy is unspecified; treat as ~50m
+    setGpsAccuracy(accuracy)
     setInArea(isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km))
-    // Reverse-geocode the selected map point
     setGeocoding(true)
     fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
@@ -137,8 +145,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
       if (landmarkName) setLandmark(landmarkName)
       if (districtName) setDistrict(districtName)
     }).catch(() => {}).finally(() => setGeocoding(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])   // run once on mount — prefilledLocation is stable per component instance
+  }
 
   const handleSelectLocation = (result: NominatimResult) => {
     const lat = parseFloat(result.lat)
@@ -178,35 +185,12 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
     if (!navigator.geolocation) { setGpsStatus('error'); return }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat      = position.coords.latitude
-        const lng      = position.coords.longitude
-        const accuracy = Math.round(position.coords.accuracy)
-        const within   = isWithinArea(lat, lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
-        setGpsLat(lat); setGpsLng(lng)
-        setInArea(within); setGpsAccuracy(accuracy)
-        setGpsStatus('acquired')
-
-        // Reverse geocoding
-        try {
-          setGeocoding(true)
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
-            { headers: { 'User-Agent': 'VerifiedCrisisMapper/1.0' } }
-          )
-          const data = await res.json()
-          const addr = data.address ?? {}
-          const landmarkName =
-            addr.amenity ?? addr.building ?? addr.neighbourhood ??
-            addr.quarter ?? addr.suburb ?? addr.city_district ??
-            addr.road ?? addr.town ?? addr.city ??
-            data.display_name?.split(',')[0] ?? ''
-          const districtName = addr.city_district ?? addr.borough ?? addr.county ?? addr.state_district ?? ''
-          if (landmarkName) setLandmark(landmarkName)
-          if (districtName) setDistrict(districtName)
-        } catch { /* non-critical */ } finally {
-          setGeocoding(false)
-        }
+      (position) => {
+        applyLocation(
+          position.coords.latitude,
+          position.coords.longitude,
+          Math.round(position.coords.accuracy),
+        )
       },
       (err) => { console.warn('[GPS]', err.message); setGpsStatus('error') },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
@@ -476,6 +460,25 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
 
   // ── Form ───────────────────────────────────────────────────────────────────
   return (
+    <>
+    {/* Full-screen map picker overlay */}
+    {showMapPicker && (
+      <Suspense fallback={
+        <div className="fixed inset-0 z-[200] bg-black flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
+        <MapPickerOverlay
+          initialCenter={
+            gpsStatus === 'acquired'
+              ? { lat: gpsLat, lng: gpsLng }
+              : { lat: config.area_center_lat, lng: config.area_center_lng }
+          }
+          onConfirm={(lat, lng) => { applyLocation(lat, lng, 15); setShowMapPicker(false) }}
+          onCancel={() => setShowMapPicker(false)}
+        />
+      </Suspense>
+    )}
     <div className="flex-1 max-w-md mx-auto w-full p-4 overflow-y-auto">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-700">
         <span>
@@ -599,6 +602,13 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
             {gpsStatus === 'error'     && '⚠ Location unavailable — tap to retry'}
           </button>
 
+          {/* Map picker button */}
+          <button type="button" onClick={() => setShowMapPicker(true)}
+            className="w-full py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-sm font-medium text-gray-600 active:bg-gray-100 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 mb-3">
+            <span className="text-base">🗺️</span>
+            <span>Pick location on map</span>
+          </button>
+
           {/* GPS denied notice */}
           {gpsStatus === 'error' && (
             <div className="mb-3 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-700">
@@ -682,6 +692,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
         </button>
       </form>
     </div>
+    </>
   )
 }
 
