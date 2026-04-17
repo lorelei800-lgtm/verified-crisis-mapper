@@ -14,7 +14,7 @@ Built on Re:Earth — Open-Source WebGIS | Submitted by Eukarya Inc.
 | CEO | Kenya Tamura |
 | Core Platform | Re:Earth — Open-Source WebGIS (Apache-2.0) |
 | Challenge | UNDP / Wazoku InnoCentive: Crisis Mapping Challenge |
-| Contact | info@eukarya.io \| reearth.io |
+| Contact | info@eukarya.io |
 
 ---
 
