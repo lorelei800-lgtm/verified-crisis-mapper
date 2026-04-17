@@ -19,10 +19,6 @@ interface Props {
   onRefresh?: () => void
   /** Called when user taps "Open Form" on a map-placed pin — navigates to ReporterView with coords */
   onMapReport?: (lat: number, lng: number) => void
-  /** All available scenarios — if >1, a switcher appears inside the dashboard */
-  scenarios?: DeploymentConfig[]
-  activeScenarioIdx?: number
-  onScenarioChange?: (idx: number) => void
   /** Navigate to Admin panel (PIN screen) — shown as "Staff Login" in the sidebar */
   onGoToAdmin?: () => void
 }
@@ -37,9 +33,6 @@ export default function DashboardView({
   cmsFetchError = null,
   onRefresh,
   onMapReport,
-  scenarios,
-  activeScenarioIdx = 0,
-  onScenarioChange,
   onGoToAdmin,
 }: Props) {
   const mapContainer       = useRef<HTMLDivElement>(null)
@@ -337,21 +330,6 @@ export default function DashboardView({
       {/* ════════════ DESKTOP SIDEBAR ════════════════════════════════════════ */}
       <div className="hidden lg:flex lg:w-80 bg-white border-r border-gray-200 flex-col overflow-hidden">
         <div className="p-3 border-b border-gray-100">
-          {/* Scenario switcher — only when multiple scenarios exist */}
-          {scenarios && scenarios.length > 1 && onScenarioChange && (
-            <div className="mb-2">
-              <label className="text-[10px] text-gray-400 font-medium block mb-0.5">Scenario</label>
-              <select
-                value={activeScenarioIdx}
-                onChange={e => onScenarioChange(+e.target.value)}
-                className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
-              >
-                {scenarios.map((s, i) => (
-                  <option key={i} value={i}>{s.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">{config.title}</h2>
             <div className="flex items-center gap-1.5">
@@ -529,20 +507,6 @@ export default function DashboardView({
           </button>
           {statsOpen && (
             <div className="px-2.5 pb-2.5">
-              {/* Scenario switcher (mobile) */}
-              {scenarios && scenarios.length > 1 && onScenarioChange && (
-                <div className="mb-2">
-                  <select
-                    value={activeScenarioIdx}
-                    onChange={e => onScenarioChange(+e.target.value)}
-                    className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700 font-medium focus:outline-none"
-                  >
-                    {scenarios.map((s, i) => (
-                      <option key={i} value={i}>{s.title}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 {(['green','amber','red'] as TrustTier[]).map(t => (
                   <div key={t} className={`rounded-lg p-1.5 text-center ${tierColors[t].bg}`}>

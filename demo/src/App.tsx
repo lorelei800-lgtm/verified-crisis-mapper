@@ -21,89 +21,6 @@ function loadReviewMap(): ReviewMap {
   }
 }
 
-function ViewerPinGate({ pin, onSuccess, onBack }: { pin: string; onSuccess: () => void; onBack: () => void }) {
-  const [input, setInput]         = useState('')
-  const [error, setError]         = useState(false)
-  const [failCount, setFailCount] = useState(0)
-  const [lockedUntil, setLockedUntil] = useState<number>(0)
-  const [, setTick] = useState(0)
-
-  const isLocked    = Date.now() < lockedUntil
-  const lockSecsLeft = Math.ceil((lockedUntil - Date.now()) / 1000)
-
-  useEffect(() => {
-    if (!isLocked) return
-    const id = setInterval(() => setTick(t => t + 1), 1000)
-    return () => clearInterval(id)
-  }, [isLocked])
-
-  const add = (d: string) => { if (!isLocked && input.length < 6) setInput(p => p + d) }
-  const del = () => setInput(p => p.slice(0, -1))
-  const check = () => {
-    if (input.length < 4 || isLocked) return
-    if (input === pin) { onSuccess() }
-    else {
-      const next = failCount + 1
-      setFailCount(next)
-      setError(true)
-      if (next >= 3) setLockedUntil(Date.now() + (next >= 6 ? 120_000 : 30_000))
-      setTimeout(() => { setInput(''); setError(false) }, 900)
-    }
-  }
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-6">
-      <div className="w-full max-w-xs">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">🗺️</div>
-          <h2 className="text-xl font-bold text-gray-800">Viewer Access</h2>
-          <p className="text-sm text-gray-500 mt-1">Enter the PIN to view the damage map</p>
-        </div>
-        <div className={`flex justify-center gap-3 mb-3 ${error ? 'animate-bounce' : ''}`}>
-          {[0,1,2,3,4,5].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
-              i < input.length
-                ? error ? 'bg-red-500 border-red-500' : 'bg-blue-600 border-blue-600'
-                : 'border-gray-300 bg-transparent'
-            }`}/>
-          ))}
-        </div>
-        <div className="h-5 text-center mb-4">
-          {isLocked
-            ? <p className="text-orange-600 text-sm font-medium">🔒 Locked — wait {lockSecsLeft}s</p>
-            : error && <p className="text-red-500 text-sm">Wrong PIN — please try again</p>
-          }
-        </div>
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {['1','2','3','4','5','6','7','8','9'].map(d => (
-            <button key={d} onClick={() => add(d)}
-              className="h-12 rounded-xl bg-white border border-gray-200 text-xl font-semibold text-gray-800 shadow-sm active:bg-gray-100 hover:bg-gray-50">
-              {d}
-            </button>
-          ))}
-          <div/>
-          <button onClick={() => add('0')} className="h-12 rounded-xl bg-white border border-gray-200 text-xl font-semibold text-gray-800 shadow-sm active:bg-gray-100 hover:bg-gray-50">0</button>
-          <button onClick={del} className="h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center shadow-sm active:bg-gray-100">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"/>
-            </svg>
-          </button>
-        </div>
-        <button onClick={check} disabled={input.length < 4 || isLocked}
-          className={`w-full h-12 rounded-xl text-base font-bold transition-all ${
-            isLocked
-              ? 'bg-orange-100 text-orange-500 cursor-not-allowed'
-              : input.length >= 4
-                ? 'bg-blue-700 text-white hover:bg-blue-800'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}>
-          {isLocked ? `🔒 ${lockSecsLeft}s` : 'View Map'}
-        </button>
-        <button onClick={onBack} className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600">← Go back</button>
-      </div>
-    </div>
-  )
-}
-
 export default function App() {
   const [view, setView]                     = useState<View>('reporter')
   // Start empty every session — CMS is the source of truth across devices.
@@ -112,7 +29,15 @@ export default function App() {
   const [config, setConfig]                 = useState<DeploymentConfig>(DEFAULT_CONFIG)
   const [scenarios, setScenarios]           = useState<DeploymentConfig[]>([DEFAULT_CONFIG])
   const [activeScenarioIdx, setActiveScenarioIdx] = useState(0)
-  const [viewerAuthed, setViewerAuthed]     = useState(false)
+  /**
+   * True when the page was opened with a ?scenario= URL param.
+   * In that case the scenario switcher is hidden — the URL already pins the context
+   * (citizen / municipal staff use-case). Without the param (central govt overview),
+   * the switcher is shown in the header.
+   */
+  const [hasScenarioParam] = useState(
+    () => !!new URLSearchParams(window.location.search).get('scenario')
+  )
   const [unseenCount, setUnseenCount]       = useState(0)
   const [newReportIds, setNewReportIds]     = useState<Set<string>>(new Set())
   const [reviewMap, setReviewMap]           = useState<ReviewMap>(loadReviewMap)
@@ -120,6 +45,8 @@ export default function App() {
   const [isCmsLoading, setIsCmsLoading]     = useState(true)
   const [cmsFetchError, setCmsFetchError]   = useState<string | null>(null)
   const [adminAuthed, setAdminAuthed]       = useState(false)
+  // viewer_pin is retired — citizens see the dashboard freely without a PIN.
+  // Municipal staff reach Admin via the "Staff Login" button in the dashboard.
   const [pendingOfflineCount, setPendingOfflineCount] = useState(0)
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   /** Coordinates placed by a map click — passed to ReporterView as prefilledLocation */
@@ -370,6 +297,24 @@ export default function App() {
             </div>
           </div>
 
+          {/* Scenario switcher — only on base URL (no ?scenario= param) = central govt overview */}
+          {!hasScenarioParam && scenarios.length > 1 && (
+            <div className="hidden lg:flex items-center gap-1.5 min-w-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <select
+                value={activeScenarioIdx}
+                onChange={e => handleScenarioChange(+e.target.value)}
+                className="text-sm bg-blue-700 border border-blue-500 rounded-lg px-2 py-1 text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer max-w-[200px] truncate"
+              >
+                {scenarios.map((s, i) => (
+                  <option key={i} value={i}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* PC nav — shown only on lg+ screens */}
           <div className="hidden lg:flex items-center rounded-xl overflow-hidden border border-blue-600 text-sm shrink-0">
             <button
@@ -451,13 +396,9 @@ export default function App() {
               isOnline={isOnline}
               prefilledLocation={mapReportLocation ?? undefined}
             />
-          ) : view === 'dashboard' && config.viewer_pin && !viewerAuthed ? (
-            <ViewerPinGate
-              pin={config.viewer_pin}
-              onSuccess={() => setViewerAuthed(true)}
-              onBack={() => setView('reporter')}
-            />
           ) : view === 'dashboard' ? (
+            // No viewer_pin gate — citizens access the dashboard freely.
+            // Municipal staff use the "Staff Login" button inside the dashboard.
             <DashboardView
               config={config}
               submittedReports={submittedReports}
@@ -468,9 +409,6 @@ export default function App() {
               cmsFetchError={cmsFetchError}
               onRefresh={() => doFetch()}
               onMapReport={handleMapReport}
-              scenarios={scenarios}
-              activeScenarioIdx={activeScenarioIdx}
-              onScenarioChange={handleScenarioChange}
               onGoToAdmin={() => setView('admin')}
             />
           ) : (
