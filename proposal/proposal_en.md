@@ -11,7 +11,7 @@ Built on Re:Earth — Open-Source WebGIS | Submitted by Eukarya Inc.
 |---|---|
 | Submitting Organization | Eukarya Inc. (株式会社Eukarya) |
 | Headquarters | Shibuya, Tokyo, Japan |
-| CEO | Kenya Tamura (Geographer) |
+| CEO | Kenya Tamura |
 | Core Platform | Re:Earth — Open-Source WebGIS (Apache-2.0) |
 | Challenge | UNDP / Wazoku InnoCentive: Crisis Mapping Challenge |
 | Contact | info@eukarya.io \| reearth.io |
