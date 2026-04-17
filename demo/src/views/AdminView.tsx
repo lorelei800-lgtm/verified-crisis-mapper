@@ -8,7 +8,8 @@ type ReviewTab = 'all' | 'pending' | 'approved' | 'rejected'
 interface Props {
   reports: DamageReport[]
   reviewMap: ReviewMap
-  onReview: (id: string, status: ReviewStatus, reason?: string) => void
+  /** Pass null to revert a report back to Pending (removes the review decision). */
+  onReview: (id: string, status: ReviewStatus | null, reason?: string) => void
   isAuthed: boolean
   onAuthSuccess: () => void
   onLogout: () => void
@@ -327,23 +328,53 @@ export default function AdminView({ reports, reviewMap, onReview, isAuthed, onAu
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : status ? (
+                  /* Approved or Rejected — show all 3 buttons */
                   <div className="flex">
                     <button
                       onClick={() => onReview(report.id, 'approved')}
-                      className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors border-r border-gray-100 ${
+                      className={`flex-1 py-3 flex items-center justify-center gap-1 text-xs font-semibold transition-colors border-r border-gray-100 ${
                         status === 'approved' ? 'bg-green-500 text-white' : 'text-green-600 hover:bg-green-50 active:bg-green-100'
                       }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                      </svg>
+                      Approve
+                    </button>
+                    {/* Revert to Pending */}
+                    <button
+                      onClick={() => onReview(report.id, null)}
+                      className="flex-1 py-3 flex items-center justify-center gap-1 text-xs font-semibold text-amber-600 hover:bg-amber-50 active:bg-amber-100 transition-colors border-r border-gray-100">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                      </svg>
+                      Pending
+                    </button>
+                    <button
+                      onClick={() => { setPendingRejectId(report.id); setRejectReason('') }}
+                      className={`flex-1 py-3 flex items-center justify-center gap-1 text-xs font-semibold transition-colors ${
+                        status === 'rejected' ? 'bg-red-400 text-white' : 'text-red-500 hover:bg-red-50 active:bg-red-100'
+                      }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                      Reject
+                    </button>
+                  </div>
+                ) : (
+                  /* Pending — original 2-button layout */
+                  <div className="flex">
+                    <button
+                      onClick={() => onReview(report.id, 'approved')}
+                      className="flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-green-600 hover:bg-green-50 active:bg-green-100 transition-colors border-r border-gray-100">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
                       </svg>
                       Approve
                     </button>
                     <button
-                      onClick={() => { if (status === 'rejected') { onReview(report.id, 'approved') } else { setPendingRejectId(report.id); setRejectReason('') } }}
-                      className={`flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors ${
-                        status === 'rejected' ? 'bg-gray-400 text-white' : 'text-red-500 hover:bg-red-50 active:bg-red-100'
-                      }`}>
+                      onClick={() => { setPendingRejectId(report.id); setRejectReason('') }}
+                      className="flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                       </svg>

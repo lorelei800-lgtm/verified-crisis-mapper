@@ -184,8 +184,15 @@ export default function App() {
 
   const handleGoToDashboard = () => { setView('dashboard'); setUnseenCount(0) }
 
-  const handleReview = (id: string, status: ReviewStatus, reason?: string) => {
-    setReviewMap(prev => ({ ...prev, [id]: status }))
+  const handleReview = (id: string, status: ReviewStatus | null, reason?: string) => {
+    // null = revert to Pending (remove the review decision)
+    setReviewMap(prev => {
+      if (status === null) {
+        const { [id]: _removed, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [id]: status }
+    })
     const report = allKnownReports.find(r => r.id === id)
     console.info('[Admin] handleReview', id, status, reason ?? '(no reason)', 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
     if (report?.cmsId) {
