@@ -37,7 +37,7 @@ This honest scope definition is itself a design principle. A system that clearly
 
 ## Field 2 — Solution Overview
 
-**Verified Crisis Mapper** is a three-layer open-source platform built on Re:Earth — Eukarya's production-grade WebGIS — enabling crisis-affected communities to submit geo-tagged damage reports that are automatically verified for trustworthiness and visualized in real time.
+**Verified Crisis Mapper** is a three-layer open-source platform built on Re:Earth — Eukarya's open-source WebGIS platform — enabling crisis-affected communities to submit geo-tagged damage reports that are automatically verified for trustworthiness and visualized in real time.
 
 **Layer 1 — Data Collection**
 
@@ -73,7 +73,18 @@ The prototype is fully functional across all user roles:
 
 - **Residents and businesses (reporters):** Submit damage reports with photo, GPS, and damage classification. Receive Trust Score feedback immediately after submission. Reports are stored in Re:Earth CMS and appear on the live map instantly.
 - **General public (viewers):** Access the dashboard without authentication to view real-time damage locations and Trust Score indicators.
-- **Municipal/government operators:** Access the Admin Review Panel via the Staff Login button in the Dashboard. Review each report's photo, GPS, Trust Score breakdown, and damage classification, then Approve / ↩ Pending / Reject. Decisions are written back to Re:Earth CMS and propagate to all connected devices within 30 seconds. PIN lockout (3 fails → 30s; 6+ → 120s) prevents unauthorized access.
+- **Municipal/government operators:** Access the Admin Review Panel via the Staff Login button in the Dashboard. Review each report's photo, GPS, Trust Score breakdown, and damage classification, then Approve / ↩ Pending / Reject. Decisions are written back to Re:Earth CMS and propagate to all connected devices within 30 seconds. PIN lockout (3 fails → 30s; 6+ → 120s) prevents unauthorized access. **Mobile-first design: officers can travel to a damage site, open the Admin Review Panel on their smartphone, and approve on-site — no desktop required.**
+
+**Field Verification and Immediate Approval — A Review Flow That Fits in Your Pocket**
+
+One of the platform's defining features is that **both damage submission and on-site review can be completed entirely from a smartphone**.
+
+1. Resident submits → report enters human review queue (red)
+2. Government officer or community coordinator travels to the site, opens Admin Review Panel on their smartphone
+3. Confirms damage on-site, taps **Approve**
+4. Report propagates to all connected dashboards as **High Trust (green)** within 30 seconds
+
+No desktop required. No return to an operations center. Human judgment reaches the live map directly from the field — particularly valuable for reports from C2PA-non-compliant devices or mixed-damage areas where automated scoring is inconclusive.
 
 **Engagement Without Gaming**
 
@@ -132,13 +143,13 @@ The award will fund conversion of Verified Crisis Mapper into a reusable, distri
 
 TRL **4–5** at submission (functional prototype with core components demonstrated using simulated data). Re:Earth base platform: TRL 9 (national-scale production). Full Trust Score Engine implementation (live C2PA and satellite API) is targeted for TRL 6 following shortlist selection in Phase 2.
 
-**Scalability**
+**Scale & Intended Use**
 
-Architecture supports local events (50,000 uploads), regional crises (250,000), and national crises (500,000+). Multiple damage reports for the same building are versioned — the dashboard shows current status with full historical record.
+Verified Crisis Mapper is purpose-built for localized, time-critical crisis events — optimized for effective management of thousands of ground-truth reports within a defined impact zone. It is not designed as large-scale, long-term national data infrastructure; its value is agility at the onset of a crisis, not permanent high-volume throughput. Multiple damage reports for the same building are versioned — the dashboard shows current status alongside the full historical record.
 
 **Deployment Speed**
 
-Because Re:Earth CMS, the reporting form, dashboard, and Admin Review Panel are all production-ready, a new deployment requires only CMS project configuration and environment variable changes. A new city or region can be operational within hours of a crisis declaration — including DNS setup, a new deployment is achievable within one working day.
+Because Re:Earth CMS, the reporting form, dashboard, and Admin Review Panel are all production-ready, a new deployment requires only CMS project configuration and environment variable changes. With Phase 0 community preparedness in place, a new city or region can be **operational within 1 hour of a crisis declaration**. Including DNS propagation, full setup is achievable within one working day.
 
 **Usability**
 

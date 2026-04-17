@@ -34,6 +34,8 @@ Our key differentiator is a built-in **Trust Verification Engine** — a three-f
 | Unique Feature | Trust Score Engine — AI-generation detection + satellite cross-check + H3 spatial clustering + C2PA when available[^8] |
 | Proven Scale | PLATEAU: Re:Earth deployed across Japan's 300 municipalities nationwide. Same base platform extended for crisis reporting.[^12] |
 | Honest Scope | Natural disasters + non-shutdown conflicts; explicit out-of-scope for internet-blackout scenarios |
+| Use Case & Scale | Purpose-built for localized, time-critical crisis events — optimized for thousands of ground-truth reports within a defined impact zone. Not designed as large-scale, long-term national data infrastructure. |
+| Deployment Speed | With Phase 0 community preparedness in place, a new deployment can be **operational within 1 hour** of a crisis declaration (CMS configuration and environment variable changes only). |
 
 ---
 
@@ -67,6 +69,8 @@ This scope transparency reflects our engineering philosophy: a system that hones
 ---
 
 ## 3. Solution: Verified Crisis Mapper
+
+> **Design philosophy:** Verified Crisis Mapper is not designed as large-scale, long-term national data infrastructure. It is purpose-built for **rapid, localized deployment at the onset of a defined crisis event** — enabling agile ground-truth collection, verification, and visualization over a targeted impact zone. Optimized for thousands of reports per incident, it can be deployed **within 1 hour of a crisis declaration**, assuming Phase 0 community preparedness is in place.
 
 ### 3.1 Three-Layer Architecture
 
@@ -114,6 +118,19 @@ Offline resilience: submissions queue in IndexedDB; data transmits automatically
 ![Phase 3 — Government and UNDP officials view Verified Crisis Mapper dashboard](images/phase_3.png)
 
 *Fig. 3 — Municipal, national government, and UNDP officials in a joint operations center view the Verified Crisis Mapper dashboard. Trust-tier color-coded pins (green/amber/red) and satellite imagery guide resource deployment decisions. The same PWA used by field reporters (residents, businesses) doubles as the operator dashboard — a single codebase for all users.*
+
+#### Field Verification and Immediate Approval — A Review Flow That Fits in Your Pocket
+
+One of the platform's defining features is that **both damage submission and on-site review can be completed entirely from a smartphone**. The same device residents use to file reports is the device a government officer uses to confirm damage in the field and approve it on the spot.
+
+**Field verification flow:**
+
+1. Resident submits report → enters human review queue (red)
+2. Government officer or community disaster coordinator travels to the site, opens Admin Review Panel on their smartphone
+3. Confirms damage visually on-site, taps **Approve**
+4. Approved report propagates to all connected dashboards as **High Trust (green)** within 30 seconds
+
+No desktop required. No return to an operations center. Human judgment reaches the live map directly from the field — this is particularly valuable for cases the automated scoring finds difficult: reports from C2PA-non-compliant devices, or submissions from mixed-damage areas where neighboring reports conflict.
 
 ### 3.3 Trust Score Engine — Technical Design
 
@@ -189,11 +206,11 @@ At the time of proposal submission, the following components are operational and
 **Live demo:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
 *(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
 
-- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification (Minimal / Partially Damaged / Completely Destroyed), 8 infrastructure categories, and real-time Trust Score result display immediately after submission. Operates without GPS (graceful degradation with user guidance). Offline-first: submissions queue via IndexedDB and auto-sync via Background Sync when connectivity returns.
+- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification (Minimal / Partially Damaged / Completely Destroyed), 8 infrastructure categories, and real-time Trust Score result display immediately after submission. Operates without GPS (graceful degradation with user guidance). Offline-first: submissions queue in IndexedDB and transmit automatically when connectivity returns — no user action required.
 - **Map-Based Location Picker:** Full-screen satellite map overlay (floating-pin style) for mobile location selection — user pans map under a fixed CSS center pin, then confirms with `map.getCenter()`. Eliminates Android Chrome tap reliability issues. Lazy-loaded to keep main bundle at ~62KB gzip.
 - **Operator Dashboard:** React + MapLibre GL JS satellite map with color-coded reports (green ≥ 80 / amber 50–79 / red < 50), zoom-adaptive marker clustering (individual pins at zoom ≥ 12; cluster count badges at lower zoom), tier and infrastructure filtering, sort by newest or Trust Score, and per-report Trust Score breakdown. Citizens access the dashboard freely — no viewer PIN gate.
 - **Staff Login Button:** "Government / Municipal Staff Login" link embedded in the Dashboard (desktop sidebar bottom; mobile statistics overlay bottom) — navigates directly to the Admin PIN screen without requiring the logo secret-tap.
-- **Admin Review Panel:** PIN-authenticated government operator view with progressive lockout (3 failed attempts → 30-second lockout; 6+ attempts → 120-second lockout). Three-button review workflow: **Approve** / **↩ Pending** / **Reject** — the Pending button allows reviewers to revert a decision for re-examination. Reject includes a 6-option reason dropdown. All decisions are written back to Re:Earth CMS and propagate to all connected dashboards within 30 seconds.
+- **Admin Review Panel:** PIN-authenticated government operator view with progressive lockout (3 failed attempts → 30-second lockout; 6+ attempts → 120-second lockout). Three-button review workflow: **Approve** / **↩ Pending** / **Reject** — the Pending button allows reviewers to revert a decision for re-examination. Reject includes a 6-option reason dropdown. All decisions are written back to Re:Earth CMS and propagate to all connected dashboards within 30 seconds. **Mobile-first design: officers can travel to a damage site, open the Admin Review Panel on their smartphone, verify on-site, and approve — no desktop or operations center return required.**
 - **Cross-Device Real-Time Sync:** Review decisions and new submissions appear on all connected devices within 30 seconds via CMS polling.
 - **Trust Score MVP:** Four-factor scoring pipeline implemented. Geospatial consistency (GPS accuracy + area containment) and submission metadata (channel, landmark completeness) are fully operational. Image integrity uses photo-source branching (camera/library); C2PA and AI-generation detection use TRL 4–5 demo signals (live APIs scoped for Phase 2). Score breakdown displayed as bar chart in both the reporter confirmation screen and the Admin detail card.
 - **Re:Earth CMS:** Single-deployment model — one CMS project per deployment context (city/region), with `deployment-config` model (bounds, area, admin_pin, labels) and `damage-reports` model (15 fields including trust score sub-scores, review_status, reject_reason, image asset). Production-ready backend for multi-device, multi-operator deployment.
