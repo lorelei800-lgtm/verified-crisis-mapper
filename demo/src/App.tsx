@@ -4,6 +4,7 @@ import { fetchAllScenarios, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG,
 import { getAllQueued, removeQueued, incrementAttempts, countQueued } from './services/offlineQueue'
 import { CMS } from './config'
 import { mockReports } from './data/mockReports'
+import { isWithinArea } from './utils/geo'
 import ReporterView from './views/ReporterView'
 const DashboardView = lazy(() => import('./views/DashboardView'))
 const AdminView     = lazy(() => import('./views/AdminView'))
@@ -146,17 +147,35 @@ export default function App() {
     return () => clearInterval(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Merged list for AdminView: CMS + session submitted (deduped)
+  // Merged list: CMS + session submitted (deduped) — ALL scenarios
   const allKnownReports = useMemo(() => {
     const base = CMS.enabled ? cmsReports : mockReports
     const sessionIds = new Set(submittedReports.map(r => r.id))
     return [...submittedReports, ...base.filter(r => !sessionIds.has(r.id))]
   }, [cmsReports, submittedReports])
 
-  // Pending review count — shown as badge on Admin nav tab
+  /**
+   * Reports scoped to the active scenario's geographic area.
+   *
+   * Design rule:
+   *   ?scenario=xxx  →  show only reports within that scenario's area_radius_km.
+   *                     Municipal staff (Fukui / Chiyoda) each see their own data.
+   *   no param       →  show all reports across all scenarios (central govt view).
+   *
+   * Phase 2 (future): replace geographic filter with an explicit `scenario_label`
+   * field stored on each CMS report item for unambiguous scoping.
+   */
+  const adminScopedReports = useMemo(() => {
+    if (!hasScenarioParam) return allKnownReports   // central govt: see everything
+    return allKnownReports.filter(r =>
+      isWithinArea(r.lat, r.lng, config.area_center_lat, config.area_center_lng, config.area_radius_km)
+    )
+  }, [allKnownReports, config, hasScenarioParam])
+
+  // Pending review count — scoped to the active scenario (same logic as adminScopedReports)
   const adminPendingCount = useMemo(
-    () => allKnownReports.filter(r => !reviewMap[r.id]).length,
-    [allKnownReports, reviewMap]
+    () => adminScopedReports.filter(r => !reviewMap[r.id]).length,
+    [adminScopedReports, reviewMap]
   )
 
   // Persist review map
@@ -261,7 +280,7 @@ export default function App() {
     // Optimistic local update
     setReviewMap(prev => ({ ...prev, [id]: status }))
     // Write back to CMS so other devices see the change
-    const report = allKnownReports.find(r => r.id === id)
+    const report = adminScopedReports.find(r => r.id === id)
     console.info('[Admin] handleReview', id, status, reason ?? '(no reason)', 'cmsId:', report?.cmsId, 'writable:', CMS.writable)
     if (report?.cmsId) {
       updateReviewStatus(report.cmsId, status, reason).then(ok => {
@@ -413,7 +432,7 @@ export default function App() {
             />
           ) : (
             <AdminView
-              reports={allKnownReports}
+              reports={adminScopedReports}
               reviewMap={reviewMap}
               onReview={handleReview}
               isAuthed={adminAuthed}
