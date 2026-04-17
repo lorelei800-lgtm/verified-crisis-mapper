@@ -46,7 +46,31 @@ Tap the home screen icon → camera launches → GPS auto-captures → 3-tap for
 
 ![Phase 3 — Government dashboard](proposal/images/phase_3.png)
 
-Government and UNDP officials view the Re:Earth Visualizer dashboard. Color-coded pins and priority zone rankings guide resource deployment decisions.
+Government and UNDP officials view the live dashboard — a React PWA with MapLibre GL JS satellite imagery. Color-coded pins and Trust Score breakdowns guide resource deployment decisions.
+
+---
+
+## Live Demo
+
+**👉 https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/**
+
+*(Scenario: Tokyo Flood Response — Chiyoda / Kanda River Basin)*
+
+### What's implemented
+
+| Feature | Status |
+|---|---|
+| Mobile damage report form (photo, GPS, damage classification, 8 infra types) | ✅ Live |
+| Map-based location picker (floating-pin satellite overlay, no tap detection) | ✅ Live |
+| Offline-first submission queue (IndexedDB + Background Sync) | ✅ Live |
+| Trust Score display immediately after submission (4-factor breakdown) | ✅ Live |
+| MapLibre GL JS satellite dashboard with color-coded pins (green/amber/red) | ✅ Live |
+| Zoom-adaptive marker clustering | ✅ Live |
+| Admin Review Panel — PIN auth with lockout (3 fails → 30s; 6+ → 120s) | ✅ Live |
+| Admin 3-button review: Approve / ↩ Pending / Reject (with reject reason) | ✅ Live |
+| Staff Login button in Dashboard (desktop sidebar + mobile overlay) | ✅ Live |
+| Re:Earth CMS write-back + 30-second cross-device sync | ✅ Live |
+| Free citizen access — no PIN gate required | ✅ Live |
 
 ---
 
@@ -55,6 +79,7 @@ Government and UNDP officials view the Re:Earth Visualizer dashboard. Color-code
 | Document | Description |
 |---|---|
 | [proposal/proposal_en.md](proposal/proposal_en.md) | Full English proposal (7 chapters) |
+| [proposal/form_fields_en.md](proposal/form_fields_en.md) | InnoCentive form field texts (6 fields) |
 | [CHANGELOG.md](CHANGELOG.md) | Revision history |
 
 ---

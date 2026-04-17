@@ -67,6 +67,9 @@ Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <
 The Verified Crisis Mapper dashboard — a React Progressive Web App with MapLibre GL JS satellite imagery — displays trust-tier color-coded damage pins (green/amber/red), priority area rankings, and per-report Trust Score breakdowns. The same PWA used by field reporters doubles as the operator dashboard, requiring no separate installation. Data exports in GeoJSON, CSV, Shapefile, and REST API — compatible with HDX, OCHA IM Toolbox, KoboToolbox, and WFP systems.
 
 **Live prototype:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
+*(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
+
+The prototype is fully functional: damage report submission with photo, GPS, and Trust Score feedback; MapLibre GL JS satellite dashboard with color-coded trust-tier pins; Admin Review Panel with PIN lockout and 3-button review (Approve / ↩ Pending / Reject); Staff Login button embedded in the Dashboard; and Re:Earth CMS write-back with 30-second cross-device sync. Citizens access the dashboard freely without a PIN gate.
 
 **Engagement Without Gaming**
 
@@ -94,11 +97,12 @@ These fields are optional by default to minimize friction during rapid post-cris
 
 **Dashboard Decision-Support Flow**
 
-The Verified Crisis Mapper React PWA dashboard provides three operational views for government and UNDP operators:
+The Verified Crisis Mapper React PWA dashboard provides government and UNDP operators with:
 
-1. **Real-time feed:** Incoming reports displayed as trust-tier color-coded pins (green/amber/red), updated as submissions arrive
-2. **Priority zones:** H3 hexagonal clusters highlighting areas with high report density and high trust scores — guiding initial resource deployment decisions
-3. **Export queue:** Operator-curated dataset selection for structured export in GeoJSON, CSV, Shapefile, and REST API formats, directly compatible with OCHA, WFP, HDX, and KoboToolbox workflows
+1. **Real-time feed (live):** Incoming reports displayed as trust-tier color-coded pins (green/amber/red) on a MapLibre GL JS satellite map, updated as submissions arrive. Desktop sidebar and mobile bottom-sheet with tier/infrastructure filtering, sort by newest or Trust Score, and per-report Trust Score breakdown.
+2. **Admin Review Panel (live):** PIN-authenticated operator view with progressive lockout. Three-button review workflow — Approve / ↩ Pending / Reject — with CMS write-back propagating to all devices within 30 seconds. Staff Login button accessible directly from the Dashboard.
+3. **Priority zones (Phase 2):** H3 hexagonal cluster overlays highlighting high-density, high-trust areas — targeted for full implementation following shortlist selection.
+4. **Export queue (Phase 2):** Structured export in GeoJSON, CSV, Shapefile, and REST API formats, directly compatible with OCHA, WFP, HDX, and KoboToolbox workflows.
 
 ---
 

@@ -177,14 +177,16 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 At the time of proposal submission, the following components are operational and demonstrable via live URL:
 
 **Live demo:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
-*(Scenario: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
+*(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
 
-- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification, and real-time Trust Score result display. Operates without GPS (graceful degradation with user guidance).
-- **Operator Dashboard:** React + MapLibre GL JS satellite map with 30+ color-coded reports (Tokyo flood scenario), zoom-adaptive marker clustering (individual pins at zoom ≥ 12; cluster count badges at lower zoom), tier filtering, and per-report Trust Score breakdown.
-- **Admin Review Panel:** PIN-authenticated government operator view — approve/reject individual reports with Trust Score and photo inspection. Approved reports display a verified badge (✓); rejected reports are removed from the public dashboard.
-- **Cross-Device Real-Time Sync:** Review decisions (approve/reject) are written back to Re:Earth CMS and propagate to all connected devices within 30 seconds. Report submissions from any device appear on all dashboards in real time.
-- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors.
-- **Re:Earth CMS:** Damage report schema with trust_score, tier, review_status, and image asset fields — production-ready backend for multi-device, multi-operator deployment.
+- **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification (Minimal / Partially Damaged / Completely Destroyed), 8 infrastructure categories, and real-time Trust Score result display immediately after submission. Operates without GPS (graceful degradation with user guidance). Offline-first: submissions queue via IndexedDB and auto-sync via Background Sync when connectivity returns.
+- **Map-Based Location Picker:** Full-screen satellite map overlay (floating-pin style) for mobile location selection — user pans map under a fixed CSS center pin, then confirms with `map.getCenter()`. Eliminates Android Chrome tap reliability issues. Lazy-loaded to keep main bundle at ~62KB gzip.
+- **Operator Dashboard:** React + MapLibre GL JS satellite map with color-coded reports (green ≥ 80 / amber 50–79 / red < 50), zoom-adaptive marker clustering (individual pins at zoom ≥ 12; cluster count badges at lower zoom), tier and infrastructure filtering, sort by newest or Trust Score, and per-report Trust Score breakdown. Citizens access the dashboard freely — no viewer PIN gate.
+- **Staff Login Button:** "Government / Municipal Staff Login" link embedded in the Dashboard (desktop sidebar bottom; mobile statistics overlay bottom) — navigates directly to the Admin PIN screen without requiring the logo secret-tap.
+- **Admin Review Panel:** PIN-authenticated government operator view with progressive lockout (3 failed attempts → 30-second lockout; 6+ attempts → 120-second lockout). Three-button review workflow: **Approve** / **↩ Pending** / **Reject** — the Pending button allows reviewers to revert a decision for re-examination. Reject includes a 6-option reason dropdown. All decisions are written back to Re:Earth CMS and propagate to all connected dashboards within 30 seconds.
+- **Cross-Device Real-Time Sync:** Review decisions and new submissions appear on all connected devices within 30 seconds via CMS polling.
+- **Trust Score MVP:** Full scoring pipeline demonstrated — image integrity, geospatial consistency, cross-report validation, and submission metadata factors. Score breakdown displayed as bar chart in both the reporter confirmation screen and the Admin detail card.
+- **Re:Earth CMS:** Single-deployment model — one CMS project per deployment context (city/region), with `deployment-config` model (bounds, area, admin_pin, labels) and `damage-reports` model (15 fields including trust score sub-scores, review_status, reject_reason, image asset). Production-ready backend for multi-device, multi-operator deployment.
 
 > **TRL Status:** TRL 4–5 at submission. Core data collection, verification pipeline, and multi-device operator workflow are functional. Full Trust Score engine (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection.
 
