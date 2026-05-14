@@ -611,9 +611,21 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
 
           {/* GPS denied notice */}
           {gpsStatus === 'error' && (
-            <div className="mb-3 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-700">
-              GPS was denied or timed out. Your report will be placed near the area centre.
-              Search for a specific location below, or enter a landmark manually.
+            <div className="mb-3 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-700 space-y-2">
+              <p>
+                GPS was denied or timed out. Use the deployment area centre as a fallback,
+                pick a location on the map, search below, or enter a landmark manually.
+              </p>
+              {/* Explicit "use area centre" — keeps the user moving without forcing GPS.
+                  Accuracy is set to 200m to keep the Trust Score honest about the
+                  reduced geospatial confidence. */}
+              <button
+                type="button"
+                onClick={() => applyLocation(config.area_center_lat, config.area_center_lng, 200)}
+                className="w-full py-2 rounded-lg bg-amber-100 border border-amber-300 text-amber-800 font-medium active:bg-amber-200"
+              >
+                Use {config.subtitle || 'area'} centre ({config.area_center_lat.toFixed(3)}, {config.area_center_lng.toFixed(3)})
+              </button>
             </div>
           )}
 

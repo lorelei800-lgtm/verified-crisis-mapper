@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import type { DamageReport, DeploymentConfig, ReviewMap, ReviewStatus } from './types'
 import { fetchDeploymentConfig, fetchCmsReports, updateReviewStatus, DEFAULT_CONFIG, uploadAsset, createReportItem } from './services/cmsApi'
-import { getAllQueued, removeQueued, incrementAttempts, countQueued } from './services/offlineQueue'
+import { getAllQueued, removeQueued, incrementAttempts, countQueued, MAX_ATTEMPTS } from './services/offlineQueue'
 import { CMS } from './config'
 import { mockReports } from './data/mockReports'
 import ReporterView from './views/ReporterView'
@@ -127,9 +127,18 @@ export default function App() {
         if (items.length === 0) return
         console.info(`[offlineQueue] processing ${items.length} queued reports`)
         for (const item of items) {
-          if (item.attempts >= 3) continue
+          // Skip items already at the hard cap — they will be purged next time
+          // `incrementAttempts` runs on them (see offlineQueue.MAX_ATTEMPTS).
+          if (item.attempts >= MAX_ATTEMPTS) continue
           try {
-            await incrementAttempts(item.queueId)
+            // Returns true if this attempt pushed the item past the cap and it
+            // was auto-purged. In that case, also decrement the pending count
+            // and skip the upload — there's no entry left to write to.
+            const purged = await incrementAttempts(item.queueId)
+            if (purged) {
+              setPendingOfflineCount(prev => Math.max(0, prev - 1))
+              continue
+            }
             let assetId: string | undefined
             if (item.photo) {
               const file  = new File([item.photo], 'damage.jpg', { type: 'image/jpeg' })

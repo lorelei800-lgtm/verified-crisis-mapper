@@ -114,7 +114,9 @@ export async function fetchCmsReports(): Promise<{ reports: DamageReport[]; revi
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/${CMS.model}?perPage=100`
 
   try {
-    const res = await fetch(url)
+    // 10s timeout protects against hung connections on slow / lossy networks
+    // (pattern borrowed from SANPO app — same Re:Earth CMS public read API)
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: CmsListResponse = await res.json()
@@ -181,8 +183,9 @@ export async function fetchDeploymentConfig(): Promise<DeploymentConfig> {
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/deployment-config`
 
   try {
-    // Public read API — no Authorization header needed (and rejected if sent)
-    const res = await fetch(url)
+    // Public read API — no Authorization header needed (and rejected if sent).
+    // 10s timeout protects against hung connections (see fetchCmsReports for context).
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
 
     const data: { results: Array<Record<string, unknown>> } = await res.json()
@@ -200,7 +203,7 @@ export async function fetchAllScenarios(): Promise<DeploymentConfig[]> {
   if (!CMS.enabled) return [DEFAULT_CONFIG]
   const url = `${CMS.baseUrl}/api/p/${CMS.project}/deployment-config?perPage=100`
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
     const data: { results: Array<Record<string, unknown>> } = await res.json()
     const items = data.results ?? []
@@ -299,7 +302,16 @@ export async function uploadAsset(file: File): Promise<CmsAsset | null> {
       body,
     })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-    return await res.json() as CmsAsset
+    const asset = await res.json() as Partial<CmsAsset> & { previewUrl?: string }
+    // Defensive: some CMS deployments return previewUrl instead of url, or
+    // omit url entirely on async-processed assets. Treat any of url/previewUrl
+    // as success; otherwise log and return null so caller can fall back.
+    const assetUrl = asset.url ?? asset.previewUrl
+    if (!asset.id || !assetUrl) {
+      console.warn('[CMS] uploadAsset: response missing id/url', asset)
+      return null
+    }
+    return { id: asset.id, url: assetUrl, name: asset.name, contentType: asset.contentType }
   } catch (err) {
     console.warn('[CMS] uploadAsset failed', err)
     return null

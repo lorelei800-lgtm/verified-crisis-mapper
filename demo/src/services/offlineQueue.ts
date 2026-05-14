@@ -11,6 +11,14 @@ const DB_NAME = 'vcm-offline-queue'
 const DB_VER  = 1
 const STORE   = 'reports'
 
+/**
+ * Hard cap on retry attempts. After this many failed sync attempts a queued
+ * report is considered "stuck" (likely a permanent CMS error or a malformed
+ * payload) and automatically purged so it stops consuming bandwidth on every
+ * `online` event. The user's local copy in `localStorage` is unaffected.
+ */
+export const MAX_ATTEMPTS = 10
+
 export interface QueuedReport {
   queueId:  string
   report:   DamageReport
@@ -83,20 +91,34 @@ export async function countQueued(): Promise<number> {
   })
 }
 
-export async function incrementAttempts(queueId: string): Promise<void> {
+/**
+ * Increment the retry counter for a queued report. If the new count exceeds
+ * `MAX_ATTEMPTS` the entry is deleted instead, so a permanently broken item
+ * cannot keep hammering the CMS on every `online` event. Returns `true` when
+ * the entry was purged, `false` when it was simply incremented.
+ */
+export async function incrementAttempts(queueId: string): Promise<boolean> {
   const db = await openDb()
+  let purged = false
   await new Promise<void>((resolve, reject) => {
     const tx    = db.transaction(STORE, 'readwrite')
     const store = tx.objectStore(STORE)
     const req   = store.get(queueId)
     req.onsuccess = () => {
       const item = req.result as QueuedReport | undefined
-      if (item) {
-        item.attempts += 1
+      if (!item) return
+      const nextAttempts = item.attempts + 1
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        store.delete(queueId)
+        purged = true
+        console.warn(`[offlineQueue] purged ${queueId} after ${nextAttempts} attempts`)
+      } else {
+        item.attempts = nextAttempts
         store.put(item)
       }
     }
     tx.oncomplete = () => { db.close(); resolve() }
     tx.onerror    = () => { db.close(); reject(tx.error) }
   })
+  return purged
 }

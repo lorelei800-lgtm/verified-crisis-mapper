@@ -57,9 +57,16 @@ export function calculateTrustScore(params: {
     hasPhoto, photoSource, hasC2PA, aiAuthentic,
     hasGps, gpsAccuracy, isInArea,
     channel, hasLandmark, hasDistrict,
-    nearbyReportCount = 0,
-    nearbyMatchingDamageCount = 0,
   } = params
+  // Defensive clamping: callers occasionally pass inconsistent counts
+  // (e.g. matching > total when filtering happens upstream). Without this guard
+  // the cross-report branch can award the "strong corroboration" tier even when
+  // `nearbyReportCount` is 0, which is logically impossible.
+  const nearbyReportCount = Math.max(0, params.nearbyReportCount ?? 0)
+  const nearbyMatchingDamageCount = Math.max(
+    0,
+    Math.min(params.nearbyMatchingDamageCount ?? 0, nearbyReportCount),
+  )
 
   // ── Image Integrity (0–40) ──────────────────────────────────────────────────
   // C2PA: cryptographic proof photo came from this device at this moment (TRL 9)
