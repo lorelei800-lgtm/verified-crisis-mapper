@@ -77,3 +77,16 @@ export interface H3CellSummary {
   avgTrust: number
   dominantDamage: DamageLevel
 }
+
+// Re-export fusion types (Webhook-driven multi-source layer)
+export type {
+  SourceType,
+  HazardType,
+  SeverityLevel,
+  VerifiedTrustScore,
+  Lineage,
+  CrisisEvent,
+  FusedEvent,
+  GeoJSONPolygon,
+  GeoJSONMultiPolygon,
+} from './fusion'

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fusion": "node scripts/fusion/run.mjs"
   },
   "dependencies": {
     "h3-js": "^4.1.0",

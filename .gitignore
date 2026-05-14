@@ -1,0 +1,24 @@
+# Claude Code local settings (may contain OAuth tokens / worktrees)
+.claude/
+
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Local env (the actual secrets)
+.env
+.env.local
+*.env.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
