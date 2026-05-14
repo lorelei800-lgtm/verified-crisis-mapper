@@ -67,7 +67,7 @@ Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <
 The Verified Crisis Mapper dashboard — a React Progressive Web App with MapLibre GL JS satellite imagery — displays trust-tier color-coded damage pins (green/amber/red), priority area rankings, and per-report Trust Score breakdowns. The same PWA used by field reporters doubles as the operator dashboard, requiring no separate installation. Data exports in GeoJSON, CSV, Shapefile, and REST API — compatible with HDX, OCHA IM Toolbox, KoboToolbox, and WFP systems.
 
 **Live prototype:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
-*(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
+*(Deployment: Bangkok Flood Response, Chao Phraya Basin — Don Mueang / Bang Sue area)*
 
 The prototype is fully functional across all user roles:
 

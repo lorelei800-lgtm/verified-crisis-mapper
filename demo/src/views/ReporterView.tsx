@@ -679,7 +679,7 @@ export default function ReporterView({ config, onViewDashboard, onNewReport, exi
           {/* Landmark */}
           <input
             type="text" value={landmark} onChange={e => setLandmark(e.target.value)}
-            placeholder="Landmark / street name (e.g. Kanda River Bridge)"
+            placeholder="Landmark / street name (e.g. Don Mueang Market)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
           />
         </section>

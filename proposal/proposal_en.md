@@ -204,7 +204,7 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 At the time of proposal submission, the following components are operational and demonstrable via live URL:
 
 **Live demo:** https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/
-*(Deployment: Tokyo Flood Response, Kanda River Basin — Chiyoda / Kanda area)*
+*(Deployment: Bangkok Flood Response, Chao Phraya Basin — Don Mueang / Bang Sue area)*
 
 - **Reporting PWA:** Mobile-first damage report form with photo upload, GPS auto-capture with Nominatim reverse geocoding (landmark + district auto-fill), damage classification (Minimal / Partially Damaged / Completely Destroyed), 8 infrastructure categories, and real-time Trust Score result display immediately after submission. Operates without GPS (graceful degradation with user guidance). Offline-first: submissions queue in IndexedDB and transmit automatically when connectivity returns — no user action required.
 - **Map-Based Location Picker:** Full-screen satellite map overlay (floating-pin style) for mobile location selection — user pans map under a fixed CSS center pin, then confirms with `map.getCenter()`. Eliminates Android Chrome tap reliability issues. Lazy-loaded to keep main bundle at ~62KB gzip.

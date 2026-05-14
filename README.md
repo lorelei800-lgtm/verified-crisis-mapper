@@ -54,7 +54,7 @@ Government and UNDP officials view the live dashboard — a React PWA with MapLi
 
 **👉 https://lorelei800-lgtm.github.io/verified-crisis-mapper/demo/**
 
-*(Scenario: Tokyo Flood Response — Chiyoda / Kanda River Basin)*
+*(Scenario: Bangkok Flood Response — Don Mueang / Bang Sue, Chao Phraya Basin)*
 
 ### What's implemented
 
