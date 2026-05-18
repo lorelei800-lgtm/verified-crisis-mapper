@@ -1,0 +1,63 @@
+name: Refresh verified-events.json (fusion cron)
+
+# Pulls fresh data from GDACS, Copernicus EMS, and ReliefWeb hourly,
+# runs the fusion pipeline, and commits the regenerated
+# demo/public/verified-events.json so the deployed Dashboard always has
+# recent webhook-sourced events. The downstream deploy-demo.yml workflow
+# is triggered by the resulting push.
+#
+# All three source APIs are unauthenticated and rate-friendly at hourly
+# polling. No secrets are required for this workflow.
+
+on:
+  schedule:
+    # Every hour at :07 (offset from :00 to avoid GitHub-wide congestion).
+    - cron: '7 * * * *'
+  workflow_dispatch: # manual trigger from the GitHub Actions UI
+
+permissions:
+  contents: write # push the regenerated JSON back to main
+
+# Skip if a previous run is still going — we never need two parallel.
+concurrency:
+  group: fusion-cron
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need write permissions on the resulting push.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: demo/package-lock.json
+
+      - name: Install dependencies
+        working-directory: demo
+        run: npm ci
+
+      - name: Refresh verified-events.json
+        working-directory: demo
+        run: npm run fusion:static
+
+      - name: Commit if changed
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet -- demo/public/verified-events.json; then
+            echo 'No changes — skipping commit.'
+            exit 0
+          fi
+          git add demo/public/verified-events.json
+          # Note: no [skip ci] — we *want* deploy-demo.yml to pick up
+          # the regenerated JSON and redeploy GitHub Pages.
+          git commit -m "chore(fusion): refresh verified-events.json"
+          git push
