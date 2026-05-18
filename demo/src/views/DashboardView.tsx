@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import maplibregl from 'maplibre-gl'
 import { mockReports } from '../data/mockReports'
 import { CMS } from '../config'
-import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap, InfraType } from '../types'
+import type { DamageReport, TrustTier, DeploymentConfig, ReviewMap, InfraType, FusedEvent, SourceType } from '../types'
 import { tierColors, damageLevelLabel, infraTypeLabel, channelLabel } from '../utils/trustColors'
 import { getTierLabel } from '../utils/trustScore'
 import { isWithinArea } from '../utils/geo'
+import { fetchVerifiedEvents } from '../services/verifiedEvents'
 
 interface Props {
   config: DeploymentConfig
@@ -43,9 +44,16 @@ export default function DashboardView({
   const mobileListRef  = useRef<HTMLDivElement>(null)
 
   const [selectedReport, setSelectedReport] = useState<DamageReport | null>(null)
+  const [selectedVerified, setSelectedVerified] = useState<FusedEvent | null>(null)
   const [tierFilter,     setTierFilter]     = useState<TrustTier | 'all'>('all')
   const [sortBy,         setSortBy]         = useState<'time' | 'score'>('time')
   const [infraFilter,    setInfraFilter]    = useState<InfraType | 'all'>('all')
+  const [verifiedFilter, setVerifiedFilter] = useState<'show' | 'hide'>('show')
+  /** Per-source toggles within the verified-events lane. */
+  const [sourceFilter,   setSourceFilter]   = useState<Record<Exclude<SourceType, 'citizen'>, boolean>>({
+    gdacs: true, copernicus: true, reliefweb: true,
+  })
+  const [verifiedEvents, setVerifiedEvents] = useState<FusedEvent[]>([])
   const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
   const [statsOpen,      setStatsOpen]      = useState(true)
@@ -96,6 +104,33 @@ export default function DashboardView({
 
   // Keep ref in sync so map click handlers always see the current list
   filteredReportsRef.current = filteredReports
+
+  // ── Verified (webhook) events ─────────────────────────────────────────────
+  // Fetched once on mount; refreshed manually via the refresh button so the
+  // panel doesn't churn during normal use.
+  useEffect(() => {
+    let cancelled = false
+    fetchVerifiedEvents().then(events => {
+      if (!cancelled) setVerifiedEvents(events)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  /** Verified events visible after source-toggle filtering.
+   *  Webhook sources are global by design — we deliberately do NOT scope
+   *  these to the deployment area, so an operator viewing the Bangkok
+   *  demo can still zoom out to see global disaster context. */
+  const visibleVerifiedEvents = useMemo(() => {
+    if (verifiedFilter !== 'show') return [] as FusedEvent[]
+    return verifiedEvents.filter(e => {
+      const enabled = sourceFilter[e.sourceType as Exclude<SourceType, 'citizen'>] ?? false
+      return enabled
+    })
+  }, [verifiedFilter, sourceFilter, verifiedEvents])
+
+  /** Ref so the map click handler always reads the current list without re-binding. */
+  const verifiedRef = useRef<FusedEvent[]>([])
+  verifiedRef.current = visibleVerifiedEvents
 
   const isLoading = CMS.enabled && isCmsLoading && cmsReports === null
 
@@ -321,7 +356,70 @@ export default function DashboardView({
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
     map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = 'crosshair' })
+    map.on('mouseenter', 'verified-points', () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', 'verified-points', () => { map.getCanvas().style.cursor = 'crosshair' })
+
+    // Layer-click handler for verified events: select and open the lineage panel.
+    map.on('click', 'verified-points', (e) => {
+      mapTapConsumedRef.current = true
+      layerConsumed = true
+      const feats = map.queryRenderedFeatures(e.point, { layers: ['verified-points'] })
+      if (!feats.length) return
+      const id = feats[0].properties!.id as string
+      const event = verifiedRef.current.find(v => v.eventId === id)
+      if (event) {
+        setSelectedVerified(event)
+        setSelectedReport(null)
+        setMobileListOpen(false)
+        setMapReportPin(null)
+      }
+    })
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Verified-events MapLibre source + layer ───────────────────────────────
+  // Separate from the citizen-reports source so the two lanes are visually
+  // distinct and the source-filter UI can toggle each layer independently
+  // without re-clustering the citizen data.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return
+
+    const features = visibleVerifiedEvents.map(event => ({
+      type: 'Feature' as const,
+      properties: {
+        id:          event.eventId,
+        sourceType:  event.sourceType,
+        hazardType:  event.hazardType,
+        trustTotal:  event.trustScore.total,
+        sourceCount: event.sourceCount,
+        // Severity-derived stroke colour. Cross-validated events (sourceCount≥2)
+        // get a deeper blue to draw the eye to the most defensible signals.
+        color: event.sourceCount >= 2 ? '#1d4ed8'
+             : event.severity === 'red'    ? '#dc2626'
+             : event.severity === 'orange' ? '#f59e0b'
+             : '#3b82f6',
+      },
+      geometry: { type: 'Point' as const, coordinates: [event.lng, event.lat] },
+    }))
+    const geojson = { type: 'FeatureCollection' as const, features }
+
+    const existing = map.getSource('verified') as maplibregl.GeoJSONSource | undefined
+    if (existing) { existing.setData(geojson); return }
+
+    map.addSource('verified', { type: 'geojson', data: geojson })
+    map.addLayer({
+      id: 'verified-points', type: 'circle', source: 'verified',
+      paint: {
+        // Hollow circles to read as "wider context" rather than "report
+        // here"; the citizen pins (filled) remain the eye-catcher.
+        'circle-color': 'rgba(255,255,255,0.05)',
+        'circle-radius': ['case', ['>=', ['get', 'sourceCount'], 2], 14, 11],
+        'circle-stroke-width': ['case', ['>=', ['get', 'sourceCount'], 2], 3, 2],
+        'circle-stroke-color': ['get', 'color'],
+        'circle-stroke-opacity': 0.95,
+      },
+    })
+  }, [visibleVerifiedEvents, mapReady])
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -395,6 +493,40 @@ export default function DashboardView({
                 }`}>{label}</button>
             ))}
           </div>
+        </div>
+
+        {/* Data-source filter (webhook lane) — toggles verified-events visibility */}
+        <div className="px-3 pb-2 pt-2 border-b border-gray-100 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400">
+              Verified Sources <span className="text-gray-300">({visibleVerifiedEvents.length})</span>
+            </span>
+            <button
+              onClick={() => setVerifiedFilter(verifiedFilter === 'show' ? 'hide' : 'show')}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                verifiedFilter === 'show' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+              title="Toggle webhook-sourced events on the map"
+            >
+              {verifiedFilter === 'show' ? 'On' : 'Off'}
+            </button>
+          </div>
+          {verifiedFilter === 'show' && (
+            <div className="flex flex-wrap gap-1">
+              {(['gdacs', 'copernicus', 'reliefweb'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSourceFilter(prev => ({ ...prev, [s]: !prev[s] }))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    sourceFilter[s] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                  title={sourceFilter[s] ? `Hide ${s} events` : `Show ${s} events`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Infra type filter */}
@@ -610,6 +742,67 @@ export default function DashboardView({
                 <MiniBar label="Cross" value={selectedReport.trustScore.crossReport}    max={20} color={tierColors[selectedReport.tier].hex}/>
                 <MiniBar label="Meta"  value={selectedReport.trustScore.metadata}       max={10} color={tierColors[selectedReport.tier].hex}/>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Desktop verified-event popup (lineage card) ── */}
+        {selectedVerified && !selectedReport && (
+          <div className="hidden lg:block absolute top-3 right-3 bg-white rounded-xl shadow-lg w-72 overflow-hidden border-2 border-blue-300 z-10">
+            <div className="px-3 py-2 flex items-center justify-between bg-blue-50">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  {selectedVerified.trustScore.total}
+                </div>
+                <span className="text-xs font-semibold text-blue-900 truncate">
+                  {selectedVerified.sourceType.toUpperCase()} · {selectedVerified.hazardType}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {selectedVerified.isFused && (
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-200 px-1.5 py-0.5 rounded-full">
+                    {selectedVerified.sourceCount}× fused
+                  </span>
+                )}
+                <button onClick={() => setSelectedVerified(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+              </div>
+            </div>
+            <div className="p-3 space-y-1.5 text-xs">
+              <div className="font-medium text-gray-700 leading-snug">{selectedVerified.title}</div>
+              {selectedVerified.description && (
+                <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-4">{selectedVerified.description}</p>
+              )}
+              <InfoRow label="When"     value={formatDate(selectedVerified.occurredAt)} />
+              <InfoRow label="Country"  value={selectedVerified.country ?? '—'} />
+              {selectedVerified.severity && (
+                <InfoRow label="Severity" value={selectedVerified.severity.toUpperCase()} />
+              )}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Lineage — fused from</div>
+                <div className="flex flex-wrap gap-1">
+                  {selectedVerified.lineage.fusedFrom.map((f, i) => (
+                    <span
+                      key={f.eventId + i}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+                      title={`${f.eventId} · ${formatDate(f.detectedAt)}`}
+                    >
+                      {f.sourceType}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-2 space-y-1">
+                <MiniBar label="Source" value={selectedVerified.trustScore.sourceIntegrity} max={40} color="#1d4ed8"/>
+                <MiniBar label="Geo"    value={selectedVerified.trustScore.geospatial}      max={30} color="#1d4ed8"/>
+                <MiniBar label="Cross"  value={selectedVerified.trustScore.crossSource}     max={20} color="#1d4ed8"/>
+                <MiniBar label="Meta"   value={selectedVerified.trustScore.metadata}        max={10} color="#1d4ed8"/>
+              </div>
+              {selectedVerified.url && (
+                <a href={selectedVerified.url} target="_blank" rel="noopener noreferrer"
+                  className="block text-center mt-2 text-[11px] text-blue-600 hover:text-blue-800 underline">
+                  Open source ↗
+                </a>
+              )}
             </div>
           </div>
         )}

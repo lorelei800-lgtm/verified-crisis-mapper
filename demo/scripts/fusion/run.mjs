@@ -17,6 +17,9 @@
  *
  * See ./README.md for the architecture overview.
  */
+import { writeFile, mkdir } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { fetchGdacs } from './sources/gdacs.mjs'
 import { fetchCopernicus } from './sources/copernicus.mjs'
 import { fetchReliefWeb } from './sources/reliefweb.mjs'
@@ -28,12 +31,36 @@ const argv = process.argv.slice(2)
 const flags = {
   dryRun:    argv.includes('--dry-run'),
   source:    argv.find(a => a.startsWith('--source='))?.split('=')[1] ?? null,
+  // --out=path  Write the scored, fused events to a JSON file. Useful for
+  //             populating `demo/public/verified-events.json`, which the
+  //             React Dashboard loads to show webhook-sourced events
+  //             without needing a live CMS / cron.
+  out:       argv.find(a => a.startsWith('--out='))?.split('=')[1] ?? null,
   help:      argv.includes('--help') || argv.includes('-h'),
 }
 
 if (flags.help) {
-  console.log(`Usage: node scripts/fusion/run.mjs [--dry-run] [--source=gdacs|copernicus|reliefweb]`)
+  console.log(`Usage: node scripts/fusion/run.mjs [--dry-run] [--source=gdacs|copernicus|reliefweb] [--out=<path>]`)
   process.exit(0)
+}
+
+/**
+ * @param {string} relPath
+ * @param {import('../../src/types/fusion').FusedEvent[]} events
+ */
+async function writeStaticJson (relPath, events) {
+  // Resolve relative to the demo/ root (run.mjs lives in demo/scripts/fusion/).
+  const here = dirname(fileURLToPath(import.meta.url))
+  const demoRoot = resolve(here, '..', '..')
+  const absPath = resolve(demoRoot, relPath)
+  await mkdir(dirname(absPath), { recursive: true })
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    eventCount:  events.length,
+    events,
+  }
+  await writeFile(absPath, JSON.stringify(payload, null, 2), 'utf8')
+  console.log(`[fusion] wrote ${events.length} event(s) → ${relPath}`)
 }
 
 const VALID_SOURCES = ['gdacs', 'copernicus', 'reliefweb']
@@ -86,6 +113,11 @@ async function main () {
     return acc
   }, {})
   console.log(`[fusion] tiers: green=${byTier.green ?? 0} amber=${byTier.amber ?? 0} red=${byTier.red ?? 0}`)
+
+  // Optional static-JSON output (independent of dry-run / CMS post).
+  if (flags.out) {
+    await writeStaticJson(flags.out, scored)
+  }
 
   if (flags.dryRun) {
     console.log(`[fusion] dry-run — not posting to CMS. Sample event:\n`, JSON.stringify(scored[0], null, 2))
