@@ -49,6 +49,16 @@ Three access routes ensure maximum reach:
 
 Each submission collects: photo, damage classification (Minimal / Partially Damaged / Completely Destroyed), infrastructure type (8 categories: Residential, Commercial, Government, Utility, Transport/Communication, Community, Public Space, Other), crisis nature (natural hazard / technological / human-made), debris clearance assessment, GPS coordinates, and textual landmark description as GPS fallback.
 
+**Multi-Source Fusion — Webhook Layer (multi-hazard)**
+
+Alongside citizen reports, the platform ingests three public, unauthenticated, **multi-hazard** data sources to fill the 0–2 hour information gap when affected residents cannot yet move or open an app:
+
+- **GDACS Alerts** (UN OCHA + EU JRC) — earthquake, tsunami, cyclone, flood, volcano, drought, wildfire. RSS, polled at 5–60 minute intervals.
+- **Copernicus EMS Rapid Mapping** (European Commission) — all hazard types, satellite-derived extent maps. REST, polled at 10–60 minutes.
+- **ReliefWeb** (UN OCHA) — all hazards, humanitarian situation reports. RSS, polled at 15–60 minutes.
+
+A Node.js cron worker normalizes every source record into a shared `CrisisEvent` schema, deduplicates via H3 res-8 + ±30min clustering (and country + hazard + ±7d for sources at coarser spatial resolution), scores each fused event with the same Trust Score weighting as citizen reports, and writes results to both a `verified-events` model in Re:Earth CMS and a static JSON file the Dashboard reads. Hourly GitHub Actions cron refreshes the dataset; no manual intervention is required. The same wiring covers any UNDP-relevant disaster type — the Bangkok Flood demo is one concrete illustration, not a hardcoded path.
+
 **Layer 2 — Trust Verification Engine**
 
 Each report is automatically assigned a Trust Score (0–100):
@@ -61,6 +71,8 @@ Each report is automatically assigned a Trust Score (0–100):
 | Submission Metadata (submission channel trust weighting; landmark and district field completeness; GPS accuracy value) | 10 pts |
 
 Routing: ≥80 → map display (green) | 50–79 → flagged display (amber) | <50 → human review queue (red). The engine evaluates physical and geographical integrity only — not political speech or user identity. The scoring model is explicitly designed to function without C2PA, ensuring equal treatment of reports from low-end devices and WhatsApp submissions where metadata is stripped in transit.
+
+The **same four-factor weighting** is reused for webhook-sourced events from GDACS / Copernicus EMS / ReliefWeb: only the per-factor interpretation changes (publisher prior in place of C2PA, polygon coverage in place of GPS accuracy, multi-source agreement in place of H3 neighbor clustering). Cross-source agreement directly adds +12 points (2 sources) or +20 (3+ sources), so an event confirmed by multiple independent public feeds reaches the green tier automatically — at submission time three real disasters demonstrate this (M6 Antigua earthquake, Thailand floods, Mayon volcano).
 
 **Layer 3 — Visualization & Decision Support**
 
@@ -114,7 +126,7 @@ These fields are optional by default to minimize friction during rapid post-cris
 
 The Verified Crisis Mapper React PWA dashboard provides government and UNDP operators with:
 
-1. **Real-time feed (live):** Incoming reports displayed as trust-tier color-coded pins (green/amber/red) on a MapLibre GL JS satellite map, updated as submissions arrive. Desktop sidebar and mobile bottom-sheet with tier/infrastructure filtering, sort by newest or Trust Score, and per-report Trust Score breakdown.
+1. **Real-time feed (live):** Incoming reports displayed as trust-tier color-coded pins (green/amber/red) on a MapLibre GL JS satellite map, updated as submissions arrive. Desktop sidebar and mobile bottom-sheet with tier/infrastructure filtering, sort by newest or Trust Score, and per-report Trust Score breakdown. **Source Filter** chips let operators toggle each webhook lane (GDACS / Copernicus / ReliefWeb) independently, and clicking a verified pin opens a **Lineage Card** listing every source the event was fused from — a one-tap audit trail.
 2. **Admin Review Panel (live):** PIN-authenticated operator view with progressive lockout. Three-button review workflow — Approve / ↩ Pending / Reject — with CMS write-back propagating to all devices within 30 seconds. Staff Login button accessible directly from the Dashboard.
 3. **Priority zones (Phase 2):** H3 hexagonal cluster overlays highlighting high-density, high-trust areas — targeted for full implementation following shortlist selection.
 4. **Export queue (Phase 2):** Structured export in GeoJSON, CSV, Shapefile, and REST API formats, directly compatible with OCHA, WFP, HDX, and KoboToolbox workflows.
@@ -125,7 +137,9 @@ The Verified Crisis Mapper React PWA dashboard provides government and UNDP oper
 
 **Built on Proven Infrastructure**
 
-Verified Crisis Mapper is built on Re:Earth, Eukarya's open-source WebGIS platform currently powering Japan's national 3D city model initiative, Project PLATEAU (300 municipalities, ~30TB of geospatial data). The core visualization, mapping, CMS, and API infrastructure are production-proven. Challenge-specific development — crisis reporting form, Trust Score Engine, WhatsApp integration, and humanitarian dashboard — is scoped as an extension of this platform, not a rebuild.
+Verified Crisis Mapper is built on Re:Earth, Eukarya's open-source WebGIS platform currently powering Japan's national 3D city model initiative, Project PLATEAU (300 municipalities, ~30TB of geospatial data). The core visualization, mapping, CMS, and API infrastructure are production-proven. Challenge-specific development — crisis reporting form, Trust Score Engine, WhatsApp integration, humanitarian dashboard, and the **multi-source webhook fusion layer** (GDACS + Copernicus EMS + ReliefWeb, hourly cron) — is scoped as an extension of this platform, not a rebuild.
+
+**Multi-hazard by design.** The three webhook sources we ingest are all multi-hazard and globally scoped (earthquake, tsunami, cyclone, flood, volcano, drought, wildfire). The Bangkok Flood scenario is one concrete demonstration; the same wiring serves any UNDP-relevant disaster without code changes — only the deployment-config row in CMS changes.
 
 The base platform is available at zero licensing cost under Apache-2.0. This significantly reduces cost, risk, and time-to-deployment.
 

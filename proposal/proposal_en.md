@@ -32,6 +32,7 @@ Our key differentiator is a built-in **Trust Verification Engine** — a three-f
 |---|---|
 | Platform | Re:Earth WebGIS — Apache-2.0 OSS |
 | Unique Feature | Trust Score Engine — AI-generation detection + satellite cross-check + H3 spatial clustering + C2PA when available[^8] |
+| Multi-Hazard Webhook Fusion (§3.4) | Hourly ingestion from GDACS + Copernicus EMS + ReliefWeb. All 7 UNDP-relevant hazards (earthquake / tsunami / cyclone / flood / volcano / drought / wildfire). Fills the 0–2 hour gap before citizens can file. |
 | Proven Scale | PLATEAU: Re:Earth deployed across Japan's 300 municipalities nationwide. Same base platform extended for crisis reporting.[^12] |
 | Honest Scope | Natural disasters + non-shutdown conflicts; explicit out-of-scope for internet-blackout scenarios |
 | Use Case & Scale | Purpose-built for localized, time-critical crisis events — optimized for thousands of ground-truth reports within a defined impact zone. Not designed as large-scale, long-term national data infrastructure. |
@@ -76,7 +77,7 @@ This scope transparency reflects our engineering philosophy: a system that hones
 
 | Layer | Description |
 |---|---|
-| **Layer 1 — Data Collection** (Re:Earth CMS) | Smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Designed for minimal friction — operable with one hand, 3-tap completion for core fields. Offline-first: submissions queue in IndexedDB and sync automatically when connectivity returns. |
+| **Layer 1 — Data Collection** (Re:Earth CMS) | **Two parallel lanes feed the same map.** *Citizen lane:* smartphone/web form for submitting photos, GPS-tagged location, damage category, and description. EXIF metadata and timestamps are auto-captured. Operable with one hand, 3-tap completion. Offline-first: submissions queue in IndexedDB and sync automatically when connectivity returns. *Webhook lane (see §3.4):* hourly poll of GDACS, Copernicus EMS, and ReliefWeb public feeds — covers earthquakes, tsunamis, cyclones, floods, volcanoes, droughts, and wildfires globally, so the dashboard is useful in the 0–2 hours after a disaster, before citizens can physically file reports. |
 | **Layer 2 — Trust Verification Engine** (Key Differentiator) | Automated data quality assurance: image integrity via EXIF GPS/timestamp consistency + C2PA verification[^8] where available; geospatial consistency via satellite damage analysis cross-reference; cross-report validation via H3 spatial clustering[^9] and outlier detection; Trust Score (0–100) auto-assigned to each report; score routing: ≥80 → map display (green); 50–79 → flagged display (amber); <50 → human review queue (red). |
 | **Layer 3 — Visualization & Decision Support** (React PWA Dashboard) | **Primary users: municipal and national government operators, and humanitarian staff (UNDP, OCHA, etc.).** Mobile-first installable PWA displaying real-time trust-tier color-coded map (MapLibre GL JS + satellite imagery), priority area auto-ranking, and structured GeoJSON/CSV export for WFP, OCHA, and partner system integration. The same app used by field reporters (residents, businesses) doubles as the operator dashboard — no separate installation required. |
 
@@ -144,6 +145,30 @@ No desktop required. No return to an operations center. Human judgment reaches t
 
 The Trust Score engine addresses physical/geographical data integrity only — it does not evaluate political speech, opinion, or user identity. C2PA verification contributes as a high-confidence signal when present, but the system is designed to function without it, ensuring equal treatment of reports from low-end devices.
 
+The **same four-factor weighting (40 / 30 / 20 / 10)** is reused for webhook-sourced events (§3.4). Only the per-factor interpretation changes: publisher prior in place of C2PA, polygon coverage in place of GPS accuracy, multi-source agreement in place of H3 neighbor clustering. This keeps the entire dashboard on one consistent scoring scale regardless of where a given event entered the system.
+
+### 3.4 Multi-Source Fusion — Webhook Layer
+
+A platform that depends only on citizen reports has a structural gap in the 0–2 hours after a disaster, when the people closest to the impact zone cannot yet move, take photos, or open an app. Verified Crisis Mapper closes this gap by ingesting three public, **multi-hazard** data sources alongside citizen submissions:
+
+| Source | Operator | Hazards covered | Polling |
+|---|---|---|---|
+| **GDACS Alerts** | UN OCHA + EU JRC | Earthquake, tsunami, cyclone, flood, volcano, drought, wildfire | RSS, 5–60 min |
+| **Copernicus EMS Rapid Mapping** | European Commission | All hazards (satellite-derived extent maps) | REST, 10–60 min |
+| **ReliefWeb** | UN OCHA | All hazards (humanitarian situation reports) | RSS, 15–60 min |
+
+All three feeds are unauthenticated, multi-hazard, and globally scoped. The same wiring works for any UNDP-supported disaster type — the Bangkok Flood scenario in our live demo is one concrete illustration, not a hardcoded path.
+
+**Pipeline:**
+
+1. *Normalize* — each source's native record is mapped into a shared `CrisisEvent` schema (event id, source, hazard type, coordinates, timestamps, severity, source URL, country ISO3).
+2. *Dedupe* — two-stage clustering: first by H3 resolution-8 cell (~0.74 km²) within ±30 minutes for sources publishing precise coordinates (GDACS, Copernicus), then by country + hazard + ±7 days across different sources to fuse coarser ReliefWeb situation reports with the precise event coords.
+3. *Score* — the four-factor Trust Score from §3.3 is computed per event. Cross-source agreement directly adds 12 points (2 sources) or 20 points (3+ sources), so an event confirmed by multiple independent feeds reaches the green tier (≥80) automatically.
+4. *Persist & visualize* — fused events are written to a `verified-events` model in Re:Earth CMS (production path) and to a static JSON file (demo path). The dashboard reads both lanes, renders citizen and webhook events with visually distinct pins, and exposes a **Source Filter** so an operator can toggle each lane on or off.
+5. *Lineage card* — clicking a verified pin opens a panel that lists every source the event was fused from, with the underlying event id, source URL, and timestamps. The audit trail is always one tap away.
+
+**Operationally:** an hourly GitHub Actions cron refreshes the dataset and triggers a redeployment; no manual intervention is required. The whole pipeline is `~500` lines of Node.js, runs on free-tier infrastructure, and adds no recurring licence cost.
+
 ---
 
 ## 4. Technical Specifications & Open-Source Compliance
@@ -157,7 +182,9 @@ The Trust Score engine addresses physical/geographical data integrity only — i
 | Plugin System | WebAssembly-based sandboxed plugin runtime |
 | Offline / PWA | IndexedDB offline submission queue; auto-sync on connectivity recovery via online event |
 | Image Verification | C2PA open standard (Coalition for Content Provenance and Authenticity)[^8] |
-| Spatial Indexing | Uber H3 hexagonal grid[^9] (resolution 9) for cross-report clustering |
+| Spatial Indexing | Uber H3 hexagonal grid[^9] (resolution 8/9) for cross-report and cross-source clustering |
+| Webhook Ingestion (§3.4) | Node.js cron worker polling GDACS, Copernicus EMS, ReliefWeb; written as ~500 LoC of plain ESM, no proprietary dependencies |
+| Scheduling | GitHub Actions cron (hourly); free-tier, no external dependencies |
 | Data Export | GeoJSON, CSV — compatible with HDX, OCHA IM Toolbox, KoboToolbox |
 | Hosting | Cloud-agnostic; Docker containerized; government-deployable |
 
@@ -194,7 +221,7 @@ Eukarya Inc. is a Tokyo-based geospatial technology company founded from the Uni
 
 | Phase | Timeline | Title | Deliverables |
 |---|---|---|---|
-| Phase 1 | 0–3 months | Core Platform MVP | Re:Earth CMS schema, PWA form, basic map visualization, Trust Score MVP ※**demonstrated at submission** |
+| Phase 1 | 0–3 months | Core Platform MVP | Re:Earth CMS schema, PWA form, basic map visualization, Trust Score MVP, **multi-source fusion layer (GDACS + Copernicus EMS + ReliefWeb)** ※**demonstrated at submission** |
 | Phase 2 | 3–6 months | Verification Engine *(award-funded)* | C2PA module, satellite API integration, geospatial consistency engine, WhatsApp Route C, full dashboard UI |
 | Phase 3 | 6–12 months | Field Testing | Pilot in UNDP target region, multilingual UI (Arabic, French, Spanish, Swahili), offline optimization |
 | Phase 4 | 12+ months | Scale & Future Tech | Multi-region deployment, OCHA/WFP API integration, D2C satellite connectivity exploration |
@@ -213,7 +240,8 @@ At the time of proposal submission, the following components are operational and
 - **Admin Review Panel:** PIN-authenticated government operator view with progressive lockout (3 failed attempts → 30-second lockout; 6+ attempts → 120-second lockout). Three-button review workflow: **Approve** / **↩ Pending** / **Reject** — the Pending button allows reviewers to revert a decision for re-examination. Reject includes a 6-option reason dropdown. All decisions are written back to Re:Earth CMS and propagate to all connected dashboards within 30 seconds. **Mobile-first design: officers can travel to a damage site, open the Admin Review Panel on their smartphone, verify on-site, and approve — no desktop or operations center return required.**
 - **Cross-Device Real-Time Sync:** Review decisions and new submissions appear on all connected devices within 30 seconds via CMS polling.
 - **Trust Score MVP:** Four-factor scoring pipeline implemented. Geospatial consistency (GPS accuracy + area containment) and submission metadata (channel, landmark completeness) are fully operational. Image integrity uses photo-source branching (camera/library); C2PA and AI-generation detection use TRL 4–5 demo signals (live APIs scoped for Phase 2). Score breakdown displayed as bar chart in both the reporter confirmation screen and the Admin detail card.
-- **Re:Earth CMS:** Single-deployment model — one CMS project per deployment context (city/region), with `deployment-config` model (bounds, area, admin_pin, labels) and `damage-reports` model (15 fields including trust score sub-scores, review_status, reject_reason, image asset). Production-ready backend for multi-device, multi-operator deployment.
+- **Multi-Source Fusion Layer (§3.4):** End-to-end pipeline that pulls GDACS, Copernicus EMS, and ReliefWeb hourly via a GitHub Actions cron, normalizes into a shared `CrisisEvent` schema, deduplicates via H3 + country-aware clustering, and applies the same Trust Score weights as citizen reports. The Dashboard renders verified events as a visually distinct lane with a per-source filter chip group, and a **Lineage Card** on each verified pin lists every source it was fused from. In the current snapshot, three real disasters are cross-validated at the green tier: a M6 Antigua earthquake (GDACS + Copernicus), Thailand flooding (GDACS + Copernicus), and the Mayon volcano eruption in the Philippines (Copernicus + ReliefWeb).
+- **Re:Earth CMS:** Single-deployment model — one CMS project per deployment context (city/region), with `deployment-config` model (bounds, area, admin_pin, labels), `damage-reports` model (15 fields including trust score sub-scores, review_status, reject_reason, image asset), and `verified-events` model (21 fields capturing the fused webhook output, including `lineage_json` for full audit-trail recovery). Production-ready backend for multi-device, multi-operator deployment.
 
 > **TRL Status:** TRL 4–5 at submission. Core data collection, verification pipeline, and multi-device operator workflow are functional. Full Trust Score engine (live C2PA verification, satellite API integration) is scoped for Phase 2 following shortlist selection.
 
