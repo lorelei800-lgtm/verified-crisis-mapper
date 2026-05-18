@@ -92,6 +92,7 @@ function parseItem (block) {
   const fromDate    = pickText(block, 'gdacs:fromdate') ?? pubDate
   const alertLevel  = pickText(block, 'gdacs:alertlevel')
   const country     = pickText(block, 'gdacs:country')
+  const iso3        = pickText(block, 'gdacs:iso3')?.toUpperCase()
 
   const hazardType = EVENT_TYPE_MAP[typeCode] ?? 'other'
   const severity   = alertLevel ? ALERT_LEVEL_MAP[alertLevel] : undefined
@@ -108,6 +109,7 @@ function parseItem (block) {
     detectedAt:  parseRfc2822(pubDate)  ?? new Date().toISOString(),
     severity,
     url:         link || undefined,
+    country:     iso3 || undefined,
     // sourceIntegrity & metadata get filled by trustScoreV2's priors;
     // geospatial gets a starting value here that the scorer may override.
     trustScore: {

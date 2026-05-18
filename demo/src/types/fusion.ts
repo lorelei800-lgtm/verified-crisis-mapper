@@ -102,6 +102,13 @@ export interface CrisisEvent {
   severity?: SeverityLevel
   /** Canonical link to the source page / record. */
   url?: string
+  /**
+   * ISO 3166-1 alpha-3 country code (e.g. "THA"). Used as a fallback
+   * matching key during deduplication when sources have very different
+   * spatial resolutions — GDACS reports precise event coords while
+   * ReliefWeb only has country centroids, so the H3 cells never match.
+   */
+  country?: string
   /** Optional polygon describing the affected region (GeoJSON Polygon / MultiPolygon). */
   affectedArea?: GeoJSONPolygon | GeoJSONMultiPolygon
   trustScore: VerifiedTrustScore
