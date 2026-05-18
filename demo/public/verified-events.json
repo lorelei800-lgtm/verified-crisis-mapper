@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-18T18:56:06.768Z",
+  "generatedAt": "2026-05-18T20:41:35.982Z",
   "eventCount": 107,
   "events": [
     {
@@ -323,7 +323,7 @@
       "lat": -20.04220316929763,
       "lng": 122.94931244479291,
       "occurredAt": "2026-05-15T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:00:34.000Z",
+      "detectedAt": "2026-05-18T19:00:34.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
       "country": "AUS",
@@ -343,7 +343,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028688",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
-            "detectedAt": "2026-05-18T15:00:34.000Z"
+            "detectedAt": "2026-05-18T19:00:34.000Z"
           }
         ]
       }
@@ -697,7 +697,7 @@
       "lat": -13.817645727177345,
       "lng": 130.30444207482282,
       "occurredAt": "2026-05-14T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:02:02.000Z",
+      "detectedAt": "2026-05-18T19:01:56.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028675",
       "country": "AUS",
@@ -717,7 +717,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028675",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028675",
-            "detectedAt": "2026-05-18T15:02:02.000Z"
+            "detectedAt": "2026-05-18T19:01:56.000Z"
           }
         ]
       }
@@ -1003,7 +1003,7 @@
       "lat": 53.37462266696996,
       "lng": 126.87957635049635,
       "occurredAt": "2026-05-14T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:02:15.000Z",
+      "detectedAt": "2026-05-18T19:02:08.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028707",
       "country": "RUS",
@@ -1023,7 +1023,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028707",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028707",
-            "detectedAt": "2026-05-18T15:02:15.000Z"
+            "detectedAt": "2026-05-18T19:02:08.000Z"
           }
         ]
       }
@@ -1383,7 +1383,7 @@
       "lat": -17.831033493470862,
       "lng": 124.78156254665315,
       "occurredAt": "2026-05-13T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:03:04.000Z",
+      "detectedAt": "2026-05-18T19:02:55.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028676",
       "country": "AUS",
@@ -1403,7 +1403,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028676",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028676",
-            "detectedAt": "2026-05-18T15:03:04.000Z"
+            "detectedAt": "2026-05-18T19:02:55.000Z"
           }
         ]
       }
@@ -1961,7 +1961,7 @@
       "lat": -15.058321396883604,
       "lng": 130.11558744892565,
       "occurredAt": "2026-05-10T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:05:35.000Z",
+      "detectedAt": "2026-05-18T19:05:25.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
       "country": "AUS",
@@ -1981,7 +1981,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028691",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
-            "detectedAt": "2026-05-18T15:05:35.000Z"
+            "detectedAt": "2026-05-18T19:05:25.000Z"
           }
         ]
       }
@@ -2029,7 +2029,7 @@
       "lat": -14.10092004947227,
       "lng": 132.0862481134685,
       "occurredAt": "2026-05-09T00:00:00.000Z",
-      "detectedAt": "2026-05-18T15:06:18.000Z",
+      "detectedAt": "2026-05-18T19:06:07.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
       "country": "AUS",
@@ -2049,7 +2049,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028692",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
-            "detectedAt": "2026-05-18T15:06:18.000Z"
+            "detectedAt": "2026-05-18T19:06:07.000Z"
           }
         ]
       }
@@ -2740,8 +2740,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Mexico",
       "description": "On 03/05/2026, a forest fire started in Mexico,  until 18/05/2026.",
-      "lat": 20.930274651125405,
-      "lng": -104.19770471854426,
+      "lat": 20.9302581648945,
+      "lng": -104.19772781447361,
       "occurredAt": "2026-05-03T00:00:00.000Z",
       "detectedAt": "2026-05-08T07:01:38.000Z",
       "severity": "green",
