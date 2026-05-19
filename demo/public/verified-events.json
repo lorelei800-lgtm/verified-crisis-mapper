@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-19T19:07:23.229Z",
+  "generatedAt": "2026-05-19T21:25:58.505Z",
   "eventCount": 99,
   "events": [
     {
@@ -1921,7 +1921,7 @@
       "lat": -14.10092004947227,
       "lng": 132.0862481134685,
       "occurredAt": "2026-05-09T00:00:00.000Z",
-      "detectedAt": "2026-05-19T15:06:44.000Z",
+      "detectedAt": "2026-05-19T19:06:19.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
       "country": "AUS",
@@ -1941,7 +1941,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028692",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
-            "detectedAt": "2026-05-19T15:06:44.000Z"
+            "detectedAt": "2026-05-19T19:06:19.000Z"
           }
         ]
       }
