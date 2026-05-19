@@ -1,7 +1,41 @@
 {
-  "generatedAt": "2026-05-18T22:07:34.253Z",
-  "eventCount": 93,
+  "generatedAt": "2026-05-19T00:14:14.553Z",
+  "eventCount": 94,
   "events": [
+    {
+      "eventId": "gdacs-WF-1028708",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Mexico",
+      "description": "On 17/05/2026, a forest fire started in Mexico,  until 18/05/2026.",
+      "lat": 18.393435634388556,
+      "lng": -91.67949014193297,
+      "occurredAt": "2026-05-17T00:00:00.000Z",
+      "detectedAt": "2026-05-18T23:00:09.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028708",
+      "country": "MEX",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "886d2588d1fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028708",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028708",
+            "detectedAt": "2026-05-18T23:00:09.000Z"
+          }
+        ]
+      }
+    },
     {
       "eventId": "gdacs-EQ-1541036",
       "sourceType": "gdacs",
@@ -116,8 +150,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Australia",
       "description": "On 16/05/2026, a forest fire started in Australia,  until 18/05/2026.",
-      "lat": -19.748980176357204,
-      "lng": 123.43597984200542,
+      "lat": -19.747015835981713,
+      "lng": 123.43689704287559,
       "occurredAt": "2026-05-16T00:00:00.000Z",
       "detectedAt": "2026-05-18T07:00:19.000Z",
       "severity": "green",
@@ -150,8 +184,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 16/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 51.07718504675828,
-      "lng": 130.098891477159,
+      "lat": 51.0784815244203,
+      "lng": 130.0973499561232,
       "occurredAt": "2026-05-16T00:00:00.000Z",
       "detectedAt": "2026-05-18T07:00:11.000Z",
       "severity": "green",
@@ -320,8 +354,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 15/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 51.62956071497568,
-      "lng": 127.98974599057306,
+      "lat": 51.627419230741275,
+      "lng": 127.98827514128573,
       "occurredAt": "2026-05-15T00:00:00.000Z",
       "detectedAt": "2026-05-16T11:00:25.000Z",
       "severity": "green",
@@ -354,8 +388,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 15/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 50.56524345265751,
-      "lng": 130.11086635000746,
+      "lat": 50.56584015513827,
+      "lng": 130.11246033798986,
       "occurredAt": "2026-05-15T00:00:00.000Z",
       "detectedAt": "2026-05-16T23:00:10.000Z",
       "severity": "green",
@@ -388,8 +422,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 15/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 51.13252746567042,
-      "lng": 129.76963868312384,
+      "lat": 51.13439231672316,
+      "lng": 129.76642701688047,
       "occurredAt": "2026-05-15T00:00:00.000Z",
       "detectedAt": "2026-05-16T23:00:41.000Z",
       "severity": "green",
@@ -422,8 +456,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 15/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 52.3323076112721,
-      "lng": 127.47639369832496,
+      "lat": 52.33119466630981,
+      "lng": 127.47691354192682,
       "occurredAt": "2026-05-15T00:00:00.000Z",
       "detectedAt": "2026-05-17T15:00:16.000Z",
       "severity": "green",
@@ -527,7 +561,7 @@
       "lat": -20.04220316929763,
       "lng": 122.94931244479291,
       "occurredAt": "2026-05-15T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:00:34.000Z",
+      "detectedAt": "2026-05-18T23:00:30.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
       "country": "AUS",
@@ -547,7 +581,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028688",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
-            "detectedAt": "2026-05-18T19:00:34.000Z"
+            "detectedAt": "2026-05-18T23:00:30.000Z"
           }
         ]
       }
@@ -629,7 +663,7 @@
       "lat": -13.817645727177345,
       "lng": 130.30444207482282,
       "occurredAt": "2026-05-14T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:01:56.000Z",
+      "detectedAt": "2026-05-18T23:01:56.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028675",
       "country": "AUS",
@@ -649,7 +683,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028675",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028675",
-            "detectedAt": "2026-05-18T19:01:56.000Z"
+            "detectedAt": "2026-05-18T23:01:56.000Z"
           }
         ]
       }
@@ -762,8 +796,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 14/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 53.22375133777645,
-      "lng": 127.28591330898185,
+      "lat": 53.219019353921105,
+      "lng": 127.29425623517345,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-17T11:01:24.000Z",
       "severity": "green",
@@ -776,7 +810,7 @@
         "metadata": 9,
         "total": 69
       },
-      "h3Cell": "8814111131fffff",
+      "h3Cell": "8814111137fffff",
       "isFused": false,
       "sourceCount": 1,
       "lineage": {
@@ -796,8 +830,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in United States",
       "description": "On 14/05/2026, a forest fire started in United States,  until 18/05/2026.",
-      "lat": 33.62787730406084,
-      "lng": -105.32158959978108,
+      "lat": 33.627769481750654,
+      "lng": -105.32108215582808,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-17T11:01:29.000Z",
       "severity": "green",
@@ -864,8 +898,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 14/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 53.13786072629274,
-      "lng": 126.64615720463286,
+      "lat": 53.138698064812985,
+      "lng": 126.6464179721828,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-17T15:01:58.000Z",
       "severity": "green",
@@ -898,8 +932,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation, China",
       "description": "On 14/05/2026, a forest fire started in Russian Federation, China,  until 18/05/2026.",
-      "lat": 53.17745080096018,
-      "lng": 124.84043765458289,
+      "lat": 53.17826617107821,
+      "lng": 124.84160942080021,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-18T11:01:57.000Z",
       "severity": "green",
@@ -935,7 +969,7 @@
       "lat": 53.37462266696996,
       "lng": 126.87957635049635,
       "occurredAt": "2026-05-14T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:02:08.000Z",
+      "detectedAt": "2026-05-18T23:02:15.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028707",
       "country": "RUS",
@@ -955,7 +989,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028707",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028707",
-            "detectedAt": "2026-05-18T19:02:08.000Z"
+            "detectedAt": "2026-05-18T23:02:15.000Z"
           }
         ]
       }
@@ -1071,7 +1105,7 @@
       "lat": -17.831033493470862,
       "lng": 124.78156254665315,
       "occurredAt": "2026-05-13T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:02:55.000Z",
+      "detectedAt": "2026-05-18T23:03:29.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028676",
       "country": "AUS",
@@ -1091,7 +1125,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028676",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028676",
-            "detectedAt": "2026-05-18T19:02:55.000Z"
+            "detectedAt": "2026-05-18T23:03:29.000Z"
           }
         ]
       }
@@ -1165,47 +1199,13 @@
       }
     },
     {
-      "eventId": "gdacs-WF-1028696",
-      "sourceType": "gdacs",
-      "hazardType": "wildfire",
-      "title": "Green forest fire notification in Venezuela",
-      "description": "On 13/05/2026, a forest fire started in Venezuela,  until 18/05/2026.",
-      "lat": 8.56102430241348,
-      "lng": -62.680979653708256,
-      "occurredAt": "2026-05-13T00:00:00.000Z",
-      "detectedAt": "2026-05-17T07:01:57.000Z",
-      "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028696",
-      "country": "VEN",
-      "trustScore": {
-        "sourceIntegrity": 38,
-        "geospatial": 22,
-        "crossSource": 0,
-        "metadata": 9,
-        "total": 69
-      },
-      "h3Cell": "885f416805fffff",
-      "isFused": false,
-      "sourceCount": 1,
-      "lineage": {
-        "fusedFrom": [
-          {
-            "sourceType": "gdacs",
-            "eventId": "gdacs-WF-1028696",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028696",
-            "detectedAt": "2026-05-17T07:01:57.000Z"
-          }
-        ]
-      }
-    },
-    {
       "eventId": "gdacs-WF-1028677",
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 13/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 50.83776643466377,
-      "lng": 130.29786554541562,
+      "lat": 50.83874313391676,
+      "lng": 130.29703799080264,
       "occurredAt": "2026-05-13T00:00:00.000Z",
       "detectedAt": "2026-05-16T03:01:17.000Z",
       "severity": "green",
@@ -1228,6 +1228,40 @@
             "eventId": "gdacs-WF-1028677",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028677",
             "detectedAt": "2026-05-16T03:01:17.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "gdacs-WF-1028696",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Venezuela",
+      "description": "On 13/05/2026, a forest fire started in Venezuela,  until 18/05/2026.",
+      "lat": 8.561601131911491,
+      "lng": -62.685908351159576,
+      "occurredAt": "2026-05-13T00:00:00.000Z",
+      "detectedAt": "2026-05-17T07:01:57.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028696",
+      "country": "VEN",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "885f416807fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028696",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028696",
+            "detectedAt": "2026-05-17T07:01:57.000Z"
           }
         ]
       }
@@ -1471,13 +1505,47 @@
       }
     },
     {
+      "eventId": "gdacs-WF-1028658",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Australia",
+      "description": "On 11/05/2026, a forest fire started in Australia,  until 17/05/2026.",
+      "lat": -14.925566171069327,
+      "lng": 130.6078396576422,
+      "occurredAt": "2026-05-11T00:00:00.000Z",
+      "detectedAt": "2026-05-13T07:00:14.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028658",
+      "country": "AUS",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "8894ec4c9bfffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028658",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028658",
+            "detectedAt": "2026-05-13T07:00:14.000Z"
+          }
+        ]
+      }
+    },
+    {
       "eventId": "gdacs-WF-1028682",
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 11/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 52.732269461611935,
-      "lng": 127.24055729116684,
+      "lat": 52.72867868582438,
+      "lng": 127.24576788768688,
       "occurredAt": "2026-05-11T00:00:00.000Z",
       "detectedAt": "2026-05-16T03:02:23.000Z",
       "severity": "green",
@@ -1539,81 +1607,13 @@
       }
     },
     {
-      "eventId": "gdacs-WF-1028658",
-      "sourceType": "gdacs",
-      "hazardType": "wildfire",
-      "title": "Green forest fire notification in Australia",
-      "description": "On 11/05/2026, a forest fire started in Australia,  until 17/05/2026.",
-      "lat": -14.925566171069327,
-      "lng": 130.6078396576422,
-      "occurredAt": "2026-05-11T00:00:00.000Z",
-      "detectedAt": "2026-05-13T07:00:14.000Z",
-      "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028658",
-      "country": "AUS",
-      "trustScore": {
-        "sourceIntegrity": 38,
-        "geospatial": 22,
-        "crossSource": 0,
-        "metadata": 9,
-        "total": 69
-      },
-      "h3Cell": "8894ec4c9bfffff",
-      "isFused": false,
-      "sourceCount": 1,
-      "lineage": {
-        "fusedFrom": [
-          {
-            "sourceType": "gdacs",
-            "eventId": "gdacs-WF-1028658",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028658",
-            "detectedAt": "2026-05-13T07:00:14.000Z"
-          }
-        ]
-      }
-    },
-    {
-      "eventId": "gdacs-WF-1028691",
-      "sourceType": "gdacs",
-      "hazardType": "wildfire",
-      "title": "Green forest fire notification in Australia",
-      "description": "On 10/05/2026, a forest fire started in Australia,  until 16/05/2026.",
-      "lat": -15.058321396883604,
-      "lng": 130.11558744892565,
-      "occurredAt": "2026-05-10T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:05:25.000Z",
-      "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
-      "country": "AUS",
-      "trustScore": {
-        "sourceIntegrity": 38,
-        "geospatial": 22,
-        "crossSource": 0,
-        "metadata": 9,
-        "total": 69
-      },
-      "h3Cell": "8894ee822bfffff",
-      "isFused": false,
-      "sourceCount": 1,
-      "lineage": {
-        "fusedFrom": [
-          {
-            "sourceType": "gdacs",
-            "eventId": "gdacs-WF-1028691",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
-            "detectedAt": "2026-05-18T19:05:25.000Z"
-          }
-        ]
-      }
-    },
-    {
       "eventId": "gdacs-WF-1028643",
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Australia",
       "description": "On 10/05/2026, a forest fire started in Australia,  until 17/05/2026.",
-      "lat": -15.144849635643238,
-      "lng": 130.3574437435713,
+      "lat": -15.14473917540022,
+      "lng": 130.35743158786886,
       "occurredAt": "2026-05-10T00:00:00.000Z",
       "detectedAt": "2026-05-11T15:01:04.000Z",
       "severity": "green",
@@ -1636,6 +1636,40 @@
             "eventId": "gdacs-WF-1028643",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028643",
             "detectedAt": "2026-05-11T15:01:04.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "gdacs-WF-1028691",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Australia",
+      "description": "On 10/05/2026, a forest fire started in Australia,  until 16/05/2026.",
+      "lat": -15.058321396883604,
+      "lng": 130.11558744892565,
+      "occurredAt": "2026-05-10T00:00:00.000Z",
+      "detectedAt": "2026-05-18T23:05:37.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
+      "country": "AUS",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "8894ee822bfffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028691",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
+            "detectedAt": "2026-05-18T23:05:37.000Z"
           }
         ]
       }
@@ -1751,7 +1785,7 @@
       "lat": -14.10092004947227,
       "lng": 132.0862481134685,
       "occurredAt": "2026-05-09T00:00:00.000Z",
-      "detectedAt": "2026-05-18T19:06:07.000Z",
+      "detectedAt": "2026-05-18T23:06:25.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
       "country": "AUS",
@@ -1771,7 +1805,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028692",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
-            "detectedAt": "2026-05-18T19:06:07.000Z"
+            "detectedAt": "2026-05-18T23:06:25.000Z"
           }
         ]
       }
