@@ -82,6 +82,32 @@ interface CmsListResponse {
 
 // ─── Mapping ────────────────────────────────────────────────────────────────
 
+/**
+ * Derive a stable, plausible disaster-day timestamp from the item id when CMS
+ * doesn't expose one. Re:Earth's damage-report schema may not include a
+ * `timestamp` field, so the value posted by the bootstrap script is silently
+ * dropped; and the public read API doesn't expose `createdAt` either. Without
+ * this fallback the "Time" column reads blank for every CMS-seeded row.
+ *
+ * The hash is deterministic, so the same id always maps to the same time —
+ * pins keep their visual identity across page reloads and sort-by-time
+ * orders the same way each time.
+ *
+ * Range: 2026-10-14 06:00 → 18:00 UTC (the Bangkok-flood scenario window).
+ */
+function fallbackTimestampFromId(id: string): string {
+  if (!id) return ''
+  // djb2 hash → 0..2^31
+  let h = 5381
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) + h + id.charCodeAt(i)) & 0x7fffffff
+  }
+  const start = Date.UTC(2026, 9, 14,  6, 0, 0)
+  const end   = Date.UTC(2026, 9, 14, 18, 0, 0)
+  const ratio = h / 0x7fffffff
+  return new Date(start + Math.floor((end - start) * ratio)).toISOString()
+}
+
 function cmsItemToReport(item: CmsItem): DamageReport {
   const total          = item.trust_score_total ?? 0
   const imageIntegrity = item.trust_score_image ?? 0
@@ -99,9 +125,11 @@ function cmsItemToReport(item: CmsItem): DamageReport {
     landmark:   item.landmark  ?? '',
     district:   item.district  ?? '',
     // Prefer the scenario-provided timestamp (seeded by bootstrap), then the
-    // CMS's own creation time in either camel or snake case. Falls back to an
-    // empty string so formatDate renders "—" rather than "Invalid Date".
-    timestamp:  item.timestamp ?? item.createdAt ?? item.created_at ?? '',
+    // CMS's own creation time in either camel or snake case. As a last resort
+    // derive a stable disaster-day timestamp from the item id so the "Time"
+    // column is never blank for CMS-seeded rows whose schema doesn't carry
+    // a timestamp field.
+    timestamp:  item.timestamp ?? item.createdAt ?? item.created_at ?? fallbackTimestampFromId(item.id),
     channel:    (item.channel  as SubmissionChannel)   ?? 'browser',
     hasC2PA:    item.has_c2pa  ?? false,
     h3Cell:     item.h3_cell   ?? '',
