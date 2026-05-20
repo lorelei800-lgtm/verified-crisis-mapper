@@ -1,7 +1,40 @@
 {
-  "generatedAt": "2026-05-20T15:40:33.679Z",
-  "eventCount": 92,
+  "generatedAt": "2026-05-20T18:24:41.743Z",
+  "eventCount": 93,
   "events": [
+    {
+      "eventId": "gdacs-EQ-1541620",
+      "sourceType": "gdacs",
+      "hazardType": "earthquake",
+      "title": "Green earthquake (Magnitude 6.6M, Depth:10km) in Southern East Pacific Rise 20/05/2026 17:43 UTC, [unknown].",
+      "description": "On 5/20/2026 5:43:02 PM, an earthquake occurred in Southern East Pacific Rise potentially affecting [unknown]. The earthquake had Magnitude 6.6M, Depth:10km.",
+      "lat": -56.0302,
+      "lng": -122.26,
+      "occurredAt": "2026-05-20T17:43:02.000Z",
+      "detectedAt": "2026-05-20T18:02:55.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1541620",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "88e2d44699fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-EQ-1541620",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1541620",
+            "detectedAt": "2026-05-20T18:02:55.000Z"
+          }
+        ]
+      }
+    },
     {
       "eventId": "gdacs-EQ-1541508",
       "sourceType": "gdacs",
@@ -279,7 +312,7 @@
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Zambia",
-      "description": "On 18/05/2026, a forest fire started in Zambia,  until 19/05/2026.",
+      "description": "On 18/05/2026, a forest fire started in Zambia,  until 20/05/2026.",
       "lat": -14.415738562102096,
       "lng": 26.276678819885824,
       "occurredAt": "2026-05-18T00:00:00.000Z",
@@ -1101,7 +1134,7 @@
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Australia",
-      "description": "On 14/05/2026, a forest fire started in Australia,  until 18/05/2026.",
+      "description": "On 14/05/2026, a forest fire started in Australia,  until 20/05/2026.",
       "lat": -13.42960142816633,
       "lng": 131.65559911110617,
       "occurredAt": "2026-05-14T00:00:00.000Z",
