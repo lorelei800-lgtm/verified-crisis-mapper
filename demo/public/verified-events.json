@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-20T18:24:41.743Z",
-  "eventCount": 93,
+  "generatedAt": "2026-05-20T21:02:33.793Z",
+  "eventCount": 94,
   "events": [
     {
       "eventId": "gdacs-EQ-1541620",
@@ -180,7 +180,7 @@
       "lat": 51.140731564475,
       "lng": 130.2889456186301,
       "occurredAt": "2026-05-19T00:00:00.000Z",
-      "detectedAt": "2026-05-20T15:00:16.000Z",
+      "detectedAt": "2026-05-20T19:00:10.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028720",
       "country": "RUS",
@@ -200,7 +200,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028720",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028720",
-            "detectedAt": "2026-05-20T15:00:16.000Z"
+            "detectedAt": "2026-05-20T19:00:10.000Z"
           }
         ]
       }
@@ -235,6 +235,40 @@
             "eventId": "gdacs-FL-1103887",
             "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103887",
             "detectedAt": "2026-05-20T05:45:58.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "gdacs-WF-1028721",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Australia",
+      "description": "On 18/05/2026, a forest fire started in Australia,  until 20/05/2026.",
+      "lat": -17.21837305605588,
+      "lng": 144.77543505960287,
+      "occurredAt": "2026-05-18T00:00:00.000Z",
+      "detectedAt": "2026-05-20T19:00:22.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028721",
+      "country": "AUS",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "889c2ec641fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028721",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028721",
+            "detectedAt": "2026-05-20T19:00:22.000Z"
           }
         ]
       }
@@ -313,8 +347,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Zambia",
       "description": "On 18/05/2026, a forest fire started in Zambia,  until 20/05/2026.",
-      "lat": -14.415738562102096,
-      "lng": 26.276678819885824,
+      "lat": -14.41587782700263,
+      "lng": 26.27701784075842,
       "occurredAt": "2026-05-18T00:00:00.000Z",
       "detectedAt": "2026-05-20T11:00:29.000Z",
       "severity": "green",
@@ -350,7 +384,7 @@
       "lat": -14.285040452712572,
       "lng": 26.262433963080674,
       "occurredAt": "2026-05-18T00:00:00.000Z",
-      "detectedAt": "2026-05-20T15:00:35.000Z",
+      "detectedAt": "2026-05-20T19:00:40.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
       "country": "ZMB",
@@ -370,7 +404,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028710",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
-            "detectedAt": "2026-05-20T15:00:35.000Z"
+            "detectedAt": "2026-05-20T19:00:40.000Z"
           }
         ]
       }
@@ -798,7 +832,7 @@
       "lat": -20.04220316929763,
       "lng": 122.94931244479291,
       "occurredAt": "2026-05-15T00:00:00.000Z",
-      "detectedAt": "2026-05-20T15:01:46.000Z",
+      "detectedAt": "2026-05-20T19:02:05.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
       "country": "AUS",
@@ -818,7 +852,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028688",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
-            "detectedAt": "2026-05-20T15:01:46.000Z"
+            "detectedAt": "2026-05-20T19:02:05.000Z"
           }
         ]
       }
@@ -1101,8 +1135,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in United States",
       "description": "On 14/05/2026, a forest fire started in United States,  until 20/05/2026.",
-      "lat": 33.62507722132725,
-      "lng": -105.32142596304593,
+      "lat": 33.625069166935404,
+      "lng": -105.32144644316841,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-17T11:01:29.000Z",
       "severity": "green",
@@ -1203,8 +1237,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Honduras",
       "description": "On 14/05/2026, a forest fire started in Honduras,  until 20/05/2026.",
-      "lat": 14.529116095179672,
-      "lng": -86.99313189597564,
+      "lat": 14.529112523015618,
+      "lng": -86.99313437336168,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-19T23:02:28.000Z",
       "severity": "green",
@@ -1920,7 +1954,7 @@
       "lat": -15.058321396883604,
       "lng": 130.11558744892565,
       "occurredAt": "2026-05-10T00:00:00.000Z",
-      "detectedAt": "2026-05-20T15:07:00.000Z",
+      "detectedAt": "2026-05-20T19:07:49.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
       "country": "AUS",
@@ -1940,7 +1974,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028691",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
-            "detectedAt": "2026-05-20T15:07:00.000Z"
+            "detectedAt": "2026-05-20T19:07:49.000Z"
           }
         ]
       }
@@ -1988,7 +2022,7 @@
       "lat": -14.10092004947227,
       "lng": 132.0862481134685,
       "occurredAt": "2026-05-09T00:00:00.000Z",
-      "detectedAt": "2026-05-20T15:07:06.000Z",
+      "detectedAt": "2026-05-20T19:07:54.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
       "country": "AUS",
@@ -2008,7 +2042,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028692",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
-            "detectedAt": "2026-05-20T15:07:06.000Z"
+            "detectedAt": "2026-05-20T19:07:54.000Z"
           }
         ]
       }
