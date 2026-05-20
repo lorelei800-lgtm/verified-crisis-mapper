@@ -1,0 +1,48 @@
+name: Bootstrap CMS to Bangkok
+
+# Manually triggerable workflow that resets the Re:Earth CMS to the Bangkok
+# Flood scenario:
+#   1. Updates the deployment-config row(s) to Bangkok values
+#   2. Wipes the damage-report rows and seeds the 28 mockReports
+#
+# Trigger:  Actions → "Bootstrap CMS to Bangkok" → Run workflow.
+# The CMS credentials live in repo Secrets — no local .env required.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'replace'
+        type: choice
+        options:
+          - replace        # default: wipe legacy reports, seed 28 Bangkok
+          - append         # keep legacy rows, just add 28 Bangkok on top
+          - dry-run        # print what would happen without writing
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run bootstrap
+        working-directory: demo
+        env:
+          VITE_CMS_BASE_URL: ${{ secrets.VITE_CMS_BASE_URL }}
+          VITE_CMS_PROJECT:  ${{ secrets.VITE_CMS_PROJECT }}
+          VITE_CMS_MODEL:    ${{ secrets.VITE_CMS_MODEL }}
+          VITE_CMS_TOKEN:    ${{ secrets.VITE_CMS_TOKEN }}
+        run: |
+          case "${{ inputs.mode }}" in
+            replace)  node scripts/bootstrap-bangkok.mjs ;;
+            append)   node scripts/bootstrap-bangkok.mjs --keep-existing ;;
+            dry-run)  node scripts/bootstrap-bangkok.mjs --dry-run ;;
+          esac
