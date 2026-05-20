@@ -21,9 +21,15 @@ export const BANGKOK_CONFIG = {
   area_center_lat: 13.89,
   area_center_lng: 100.58,
   area_radius_km:  18,
-  description:     'バンコク洪水対応シナリオ — Don Mueang / Bang Sue',
-  // Note: admin_pin / viewer_pin / label_damage_* are intentionally NOT touched
-  // by the bootstrap script. The existing values in CMS are preserved.
+  description:     'Bangkok Flood Response — Don Mueang / Bang Sue (Chao Phraya Basin)',
+  // English damage-level labels for the international UNDP submission. These
+  // override the model defaults so the dashboard reads in English regardless
+  // of the locale of any previous deployment-config row.
+  label_damage_minimal:   'Minimal',
+  label_damage_partial:   'Partially Damaged',
+  label_damage_destroyed: 'Completely Destroyed',
+  // Note: admin_pin / viewer_pin are intentionally NOT touched by the
+  // bootstrap script. The existing PIN values in CMS are preserved.
 }
 
 /**
