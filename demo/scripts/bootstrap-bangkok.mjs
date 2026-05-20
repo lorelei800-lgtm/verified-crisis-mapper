@@ -103,27 +103,57 @@ async function listAllItems (model) {
   return [...(data.results ?? []), ...(data.items ?? [])]
 }
 
-async function patchItem (model, itemId, fields) {
-  if (flags.dryRun) { console.log(`   [dry-run] PATCH ${model}/${itemId}`); return true }
+/**
+ * Try a PATCH and return { ok, status, body }. Always logs the response body
+ * so a 400 from Re:Earth CMS reveals which field key it rejected.
+ */
+async function rawPatch (model, itemId, fields) {
   const url = `${writeBase}/models/${model}/items/${itemId}`
   const res = await fetch(url, {
     method: 'PATCH', headers: authHeaders,
     signal: AbortSignal.timeout(15000),
     body: JSON.stringify({ fields }),
   })
-  if (!res.ok) {
-    console.warn(`   ⚠ PATCH ${model}/${itemId} → ${res.status}`)
-    return false
-  }
-  // Re-publish so the public read API picks up the change.
-  const pubUrl = `${writeBase}/models/${model}/items/${itemId}/publish`
-  const pubRes = await fetch(pubUrl, {
+  const body = await res.text().catch(() => '')
+  return { ok: res.ok, status: res.status, body }
+}
+
+async function publishItem (model, itemId) {
+  const url = `${writeBase}/models/${model}/items/${itemId}/publish`
+  const res = await fetch(url, {
     method: 'POST', headers: authHeaders,
     signal: AbortSignal.timeout(10000),
     body: '{}',
   })
-  if (!pubRes.ok) console.warn(`   ⚠ publish ${model}/${itemId} → ${pubRes.status}`)
-  return res.ok
+  if (!res.ok) console.warn(`   ⚠ publish ${model}/${itemId} → ${res.status}`)
+}
+
+/**
+ * Bulk-PATCH; on 400 fall back to one-field-at-a-time so the offender
+ * (e.g. a field whose key doesn't exist in the CMS schema) is identified
+ * by the log AND the other fields still land.
+ */
+async function patchItem (model, itemId, fields) {
+  if (flags.dryRun) { console.log(`   [dry-run] PATCH ${model}/${itemId} (${fields.length} fields)`); return true }
+
+  const bulk = await rawPatch(model, itemId, fields)
+  if (bulk.ok) {
+    await publishItem(model, itemId)
+    return true
+  }
+  console.warn(`   ⚠ PATCH ${model}/${itemId} (bulk) → ${bulk.status}: ${bulk.body.slice(0, 200)}`)
+  if (bulk.status !== 400) return false   // 401/403/404 won't get fixed by retry
+
+  console.log(`   ↪ retrying field-by-field to identify the offender…`)
+  let ok = 0, bad = 0
+  for (const f of fields) {
+    const r = await rawPatch(model, itemId, [f])
+    if (r.ok) { ok += 1; console.log(`     ✅ ${f.key}`) }
+    else      { bad += 1; console.log(`     ❌ ${f.key} → ${r.status}: ${r.body.slice(0, 120)}`) }
+  }
+  await publishItem(model, itemId)
+  console.log(`   ↪ field-by-field result: ${ok} ok / ${bad} rejected`)
+  return ok > 0
 }
 
 async function deleteItem (model, itemId) {
@@ -186,7 +216,13 @@ async function fixDeploymentConfig () {
   let ok = true
   for (const c of configs) {
     const id = c.id
-    const before = c.scenario_label ?? c.title ?? '(unknown)'
+    // Integration API may return fields either as top-level keys (public-read
+    // shape) or as a `fields: [{key, value}]` array (integration-read shape);
+    // try both so the log shows the actual "before" value.
+    const flat = Array.isArray(c.fields)
+      ? Object.fromEntries(c.fields.map(f => [f.key, f.value]))
+      : c
+    const before = flat.scenario_label ?? flat.title ?? '(unknown)'
     const success = await patchItem(CONFIG_MODEL, id, fields)
     console.log(`   ${success ? '✅' : '❌'} ${id}  "${before}" → "${BANGKOK_CONFIG.scenario_label}"`)
     if (!success) ok = false
