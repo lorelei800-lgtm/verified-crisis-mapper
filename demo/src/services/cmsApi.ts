@@ -373,8 +373,14 @@ export async function createReportItem(
   const [ws, proj] = splitProject()
   const url = `${CMS.baseUrl}/api/${ws}/projects/${proj}/models/${CMS.model}/items`
 
-  // Re:Earth CMS write API expects an array of { key, value } field objects
+  // Re:Earth CMS write API expects an array of { key, value } field objects.
+  // The `timestamp` field is included so the dashboard can display when the
+  // report was actually filed (rather than falling back to a hash of the id).
+  // Requires the damage-report model to declare a text field with key
+  // `timestamp` — if the schema lacks it, the write is silently ignored by
+  // Re:Earth CMS and the dashboard fallback kicks in (see fallbackTimestampFromId).
   const fields: Array<{ key: string; value: unknown }> = [
+    { key: 'timestamp',          value: report.timestamp || new Date().toISOString() },
     { key: 'damage_level',       value: report.damageLevel },
     { key: 'infra_type',         value: report.infraType },
     { key: 'landmark',           value: report.landmark },
