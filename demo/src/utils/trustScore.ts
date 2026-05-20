@@ -81,9 +81,14 @@ export function calculateTrustScore(params: {
       imageIntegrity = 26                           // direct capture, EXIF likely intact
       if (hasGps && gpsAccuracy <= 20) imageIntegrity += 4  // GPS-photo corroboration bonus
     } else if (photoSource === 'library') {
-      imageIntegrity = 16                           // may be old or repurposed
+      // Lowered from 16 → 8 after demo feedback: a library upload could be
+      // anything (old, recycled, repurposed from the internet, AI-generated
+      // outside our fingerprint coverage). The Trust Score should not be
+      // generous about it; the burden is on the reporter to take a fresh
+      // camera photo if they want a high image-integrity component.
+      imageIntegrity = 8
     } else {
-      imageIntegrity = 12                           // WhatsApp / unknown (EXIF stripped)
+      imageIntegrity = 6                            // WhatsApp / unknown (EXIF stripped) — also lowered to stay below library
     }
     if (!aiAuthentic) imageIntegrity = Math.max(0, imageIntegrity - 18)  // AI detected penalty
   }

@@ -57,6 +57,13 @@ export default function DashboardView({
   const [mapReady,       setMapReady]       = useState(false)
   const [mobileListOpen, setMobileListOpen] = useState(true)
   const [statsOpen,      setStatsOpen]      = useState(true)
+  /**
+   * Active basemap. 'satellite' is the dramatic option that shows the actual
+   * disaster zone topology; 'light' is the Google-Maps-style grey background
+   * that makes pins pop. We default to satellite (matches the screenshots in
+   * the proposal); a toggle in the bottom-right lets the operator flip.
+   */
+  const [basemap, setBasemap] = useState<'satellite' | 'light'>('satellite')
   const [isPullRefreshing, setIsPullRefreshing] = useState(false)
   /** Coordinates of a map-click pin — shown as "Report here?" strip until dismissed */
   const [mapReportPin, setMapReportPin] = useState<{ lat: number; lng: number } | null>(null)
@@ -177,6 +184,11 @@ export default function DashboardView({
       style: {
         version: 8,
         glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        // Two basemap sources are defined at init time so the user can flip
+        // between them via the floating button in the corner without our
+        // having to swap the entire style (which would wipe the citizen and
+        // verified data layers). We just toggle each basemap layer's
+        // visibility — see the `basemap` state hook + matching useEffect.
         sources: {
           'esri-satellite': {
             type: 'raster',
@@ -185,8 +197,24 @@ export default function DashboardView({
             attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
             maxzoom: 18,
           },
+          'carto-light': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+            ],
+            tileSize: 256,
+            attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxzoom: 19,
+          },
         },
-        layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri-satellite' }],
+        layers: [
+          // Carto-light is rendered first (i.e. underneath) but starts hidden
+          // — keeps draw order stable when the user flips the toggle.
+          { id: 'carto-light',     type: 'raster', source: 'carto-light',     layout: { visibility: 'none' } },
+          { id: 'esri-satellite',  type: 'raster', source: 'esri-satellite',  layout: { visibility: 'visible' } },
+        ],
       },
       bounds,
       fitBoundsOptions: { padding: 40 },
@@ -200,6 +228,21 @@ export default function DashboardView({
     })
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flip basemap visibility when the user toggles the button. Both layers are
+  // already attached at init time so we only swap layout.visibility — keeps
+  // every overlay (citizen pins, verified markers, halos) intact across flips.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return
+    map.setLayoutProperty('esri-satellite', 'visibility', basemap === 'satellite' ? 'visible' : 'none')
+    map.setLayoutProperty('carto-light',    'visibility', basemap === 'light'     ? 'visible' : 'none')
+    // Citizen-pin white halo helps against satellite but actively muddies the
+    // pin on the light basemap, so we toggle it in lockstep with the basemap.
+    if (map.getLayer('points-halo')) {
+      map.setLayoutProperty('points-halo', 'visibility', basemap === 'satellite' ? 'visible' : 'none')
+    }
+  }, [basemap, mapReady])
 
   // Re-fit bounds when config changes
   useEffect(() => {
@@ -654,6 +697,24 @@ export default function DashboardView({
       <div className="flex-1 relative" style={{ minHeight: '400px', minWidth: 0 }}>
         <div ref={mapContainer} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}}/>
 
+        {/* ── Basemap toggle (satellite / light) ── */}
+        {/* Placed below the NavigationControl (which sits at top-right) so it
+            doesn't collide. The light style gives pin clarity at the cost of
+            disaster-zone realism; the satellite style is the opposite. */}
+        <div className="absolute top-24 right-2 z-10 bg-white rounded-lg shadow-md overflow-hidden text-[11px] font-medium flex flex-col">
+          <button
+            onClick={() => setBasemap('satellite')}
+            className={`px-2.5 py-1.5 transition-colors ${basemap === 'satellite' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            title="Show satellite imagery"
+          >🛰 Satellite</button>
+          <div className="h-px bg-gray-200"/>
+          <button
+            onClick={() => setBasemap('light')}
+            className={`px-2.5 py-1.5 transition-colors ${basemap === 'light' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            title="Show light basemap (best for pin readability)"
+          >🗺 Light</button>
+        </div>
+
         {/* ── Mobile stats overlay ── */}
         <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md overflow-hidden">
           <button onClick={() => setStatsOpen(v => !v)}
@@ -821,6 +882,7 @@ export default function DashboardView({
                 <button onClick={() => setSelectedVerified(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
               </div>
             </div>
+            <HazardHero hazardType={selectedVerified.hazardType} severity={selectedVerified.severity} />
             <div className="p-3 space-y-1.5 text-xs">
               <div className="font-medium text-gray-700 leading-snug">{selectedVerified.title}</div>
               {selectedVerified.description && (
@@ -1035,6 +1097,37 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex gap-1">
       <span className="text-gray-400 w-14 shrink-0">{label}</span>
       <span className="text-gray-700 font-medium">{value}</span>
+    </div>
+  )
+}
+
+/**
+ * Visual hero for verified-event cards. Webhook sources don't carry photos
+ * (they're machine-generated alerts), so we render a large hazard icon over
+ * a severity-tinted band rather than leave the card photo-less.
+ */
+function HazardHero({ hazardType, severity }:
+  { hazardType: import('../types').HazardType; severity?: import('../types').SeverityLevel }) {
+  const icon =
+    hazardType === 'earthquake' ? '🌐'
+    : hazardType === 'tsunami'  ? '🌊'
+    : hazardType === 'cyclone'  ? '🌀'
+    : hazardType === 'flood'    ? '💧'
+    : hazardType === 'volcano'  ? '🌋'
+    : hazardType === 'drought'  ? '🏜️'
+    : hazardType === 'wildfire' ? '🔥'
+    : '⚠️'
+  const label = hazardType.charAt(0).toUpperCase() + hazardType.slice(1)
+  const tint =
+    severity === 'red'    ? 'from-red-100 to-red-50'
+    : severity === 'orange' ? 'from-amber-100 to-amber-50'
+    : 'from-blue-100 to-blue-50'
+  return (
+    <div className={`relative h-28 flex items-center justify-center bg-gradient-to-br ${tint}`}>
+      <span className="text-5xl" role="img" aria-label={label}>{icon}</span>
+      <span className="absolute bottom-1.5 right-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-white bg-opacity-80 px-1.5 py-0.5 rounded">
+        {label}
+      </span>
     </div>
   )
 }
