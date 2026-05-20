@@ -1,13 +1,47 @@
 {
-  "generatedAt": "2026-05-19T23:10:53.767Z",
-  "eventCount": 82,
+  "generatedAt": "2026-05-20T04:11:15.884Z",
+  "eventCount": 83,
   "events": [
+    {
+      "eventId": "gdacs-EQ-1541508",
+      "sourceType": "gdacs",
+      "hazardType": "earthquake",
+      "title": "Green earthquake (Magnitude 5.9M, Depth:49.74km) in Japan 20/05/2026 02:46 UTC, 3 thousand in MMI V.",
+      "description": "On 5/20/2026 2:46:25 AM, an earthquake occurred in Japan potentially affecting 3 thousand in MMI V. The earthquake had Magnitude 5.9M, Depth:49.74km.",
+      "lat": 27.4272,
+      "lng": 128.544,
+      "occurredAt": "2026-05-20T02:46:25.000Z",
+      "detectedAt": "2026-05-20T03:02:14.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1541508",
+      "country": "JPN",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "884a24a809fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-EQ-1541508",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1541508",
+            "detectedAt": "2026-05-20T03:02:14.000Z"
+          }
+        ]
+      }
+    },
     {
       "eventId": "gdacs-EQ-1541449",
       "sourceType": "gdacs",
       "hazardType": "earthquake",
-      "title": "Green earthquake (Magnitude 5.8M, Depth:56.53km) in Peru 19/05/2026 17:57 UTC, 650 thousand in 100km.",
-      "description": "On 5/19/2026 5:57:54 PM, an earthquake occurred in Peru potentially affecting 650 thousand in 100km. The earthquake had Magnitude 5.8M, Depth:56.53km.",
+      "title": "Green earthquake (Magnitude 5.8M, Depth:56.53km) in Peru 19/05/2026 17:57 UTC, 330 thousand in MMI V.",
+      "description": "On 5/19/2026 5:57:54 PM, an earthquake occurred in Peru potentially affecting 330 thousand in MMI V. The earthquake had Magnitude 5.8M, Depth:56.53km.",
       "lat": -14.2075,
       "lng": -75.5167,
       "occurredAt": "2026-05-19T17:57:54.000Z",
@@ -79,7 +113,7 @@
       "lat": -13.344096665742766,
       "lng": 130.44504973756545,
       "occurredAt": "2026-05-19T00:00:00.000Z",
-      "detectedAt": "2026-05-19T23:00:09.000Z",
+      "detectedAt": "2026-05-20T03:00:12.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028712",
       "country": "AUS",
@@ -99,7 +133,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028712",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028712",
-            "detectedAt": "2026-05-19T23:00:09.000Z"
+            "detectedAt": "2026-05-20T03:00:12.000Z"
           }
         ]
       }
@@ -147,7 +181,7 @@
       "lat": -14.285040452712572,
       "lng": 26.262433963080674,
       "occurredAt": "2026-05-18T00:00:00.000Z",
-      "detectedAt": "2026-05-19T23:00:29.000Z",
+      "detectedAt": "2026-05-20T03:00:30.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
       "country": "ZMB",
@@ -167,7 +201,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028710",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
-            "detectedAt": "2026-05-19T23:00:29.000Z"
+            "detectedAt": "2026-05-20T03:00:30.000Z"
           }
         ]
       }
@@ -181,7 +215,7 @@
       "lat": -14.413189025132388,
       "lng": 26.268116686699088,
       "occurredAt": "2026-05-18T00:00:00.000Z",
-      "detectedAt": "2026-05-19T23:00:23.000Z",
+      "detectedAt": "2026-05-20T03:00:24.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028711",
       "country": "ZMB",
@@ -201,7 +235,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028711",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028711",
-            "detectedAt": "2026-05-19T23:00:23.000Z"
+            "detectedAt": "2026-05-20T03:00:24.000Z"
           }
         ]
       }
@@ -212,8 +246,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Mexico",
       "description": "On 17/05/2026, a forest fire started in Mexico,  until 19/05/2026.",
-      "lat": 18.395663726520027,
-      "lng": -91.67526055687836,
+      "lat": 18.39575578483776,
+      "lng": -91.67515226265252,
       "occurredAt": "2026-05-17T00:00:00.000Z",
       "detectedAt": "2026-05-18T23:00:09.000Z",
       "severity": "green",
@@ -244,8 +278,8 @@
       "eventId": "gdacs-EQ-1541036",
       "sourceType": "gdacs",
       "hazardType": "earthquake",
-      "title": "Green earthquake (Magnitude 5.7M, Depth:23.374km) in Solomon Islands 16/05/2026 15:17 UTC, 2 thousand (in MMI>=VII).",
-      "description": "On 5/16/2026 3:17:56 PM, an earthquake occurred in Solomon Islands potentially affecting 2 thousand (in MMI>=VII). The earthquake had Magnitude 5.7M, Depth:23.374km.",
+      "title": "Green earthquake (Magnitude 5.7M, Depth:23.374km) in Solomon Islands 16/05/2026 15:17 UTC, 1 thousand in MMI VI.",
+      "description": "On 5/16/2026 3:17:56 PM, an earthquake occurred in Solomon Islands potentially affecting 1 thousand in MMI VI. The earthquake had Magnitude 5.7M, Depth:23.374km.",
       "lat": -8.5526,
       "lng": 160.9161,
       "occurredAt": "2026-05-16T15:17:56.000Z",
@@ -278,8 +312,8 @@
       "eventId": "gdacs-EQ-1541033",
       "sourceType": "gdacs",
       "hazardType": "earthquake",
-      "title": "Green earthquake (Magnitude 6M, Depth:30.038km) in Antigua & Barbuda 16/05/2026 14:50 UTC, 390 thousand in MMI>=IV.",
-      "description": "On 5/16/2026 2:50:03 PM, an earthquake occurred in Antigua & Barbuda potentially affecting 390 thousand in MMI>=IV. The earthquake had Magnitude 6M, Depth:30.038km.",
+      "title": "Green earthquake (Magnitude 6M, Depth:30.038km) in Antigua & Barbuda 16/05/2026 14:50 UTC, 2 thousand in MMI V.",
+      "description": "On 5/16/2026 2:50:03 PM, an earthquake occurred in Antigua & Barbuda potentially affecting 2 thousand in MMI V. The earthquake had Magnitude 6M, Depth:30.038km.",
       "lat": 17.5127,
       "lng": -61.1771,
       "occurredAt": "2026-05-16T14:50:03.000Z",
@@ -349,40 +383,6 @@
       }
     },
     {
-      "eventId": "gdacs-WF-1028704",
-      "sourceType": "gdacs",
-      "hazardType": "wildfire",
-      "title": "Green forest fire notification in Russian Federation",
-      "description": "On 16/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
-      "lat": 51.0784815244203,
-      "lng": 130.0973499561232,
-      "occurredAt": "2026-05-16T00:00:00.000Z",
-      "detectedAt": "2026-05-18T07:00:11.000Z",
-      "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028704",
-      "country": "RUS",
-      "trustScore": {
-        "sourceIntegrity": 38,
-        "geospatial": 22,
-        "crossSource": 0,
-        "metadata": 9,
-        "total": 69
-      },
-      "h3Cell": "8814a83697fffff",
-      "isFused": false,
-      "sourceCount": 1,
-      "lineage": {
-        "fusedFrom": [
-          {
-            "sourceType": "gdacs",
-            "eventId": "gdacs-WF-1028704",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028704",
-            "detectedAt": "2026-05-18T07:00:11.000Z"
-          }
-        ]
-      }
-    },
-    {
       "eventId": "gdacs-WF-1028685",
       "sourceType": "gdacs",
       "hazardType": "wildfire",
@@ -417,18 +417,18 @@
       }
     },
     {
-      "eventId": "gdacs-FL-1103885",
+      "eventId": "gdacs-WF-1028704",
       "sourceType": "gdacs",
-      "hazardType": "flood",
-      "title": "Green flood alert in Austria",
-      "description": "On 15/05/2026, a flood started in Austria, lasting until 17/05/2026 (last update). The flood caused 0 deaths and 7 displaced .",
-      "lat": 47.2305949,
-      "lng": 13.3316861,
-      "occurredAt": "2026-05-15T01:00:00.000Z",
-      "detectedAt": "2026-05-18T11:15:36.000Z",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Russian Federation",
+      "description": "On 16/05/2026, a forest fire started in Russian Federation,  until 18/05/2026.",
+      "lat": 51.0784815244203,
+      "lng": 130.0973499561232,
+      "occurredAt": "2026-05-16T00:00:00.000Z",
+      "detectedAt": "2026-05-18T07:00:11.000Z",
       "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103885",
-      "country": "AUT",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028704",
+      "country": "RUS",
       "trustScore": {
         "sourceIntegrity": 38,
         "geospatial": 22,
@@ -436,16 +436,16 @@
         "metadata": 9,
         "total": 69
       },
-      "h3Cell": "881e169567fffff",
+      "h3Cell": "8814a83697fffff",
       "isFused": false,
       "sourceCount": 1,
       "lineage": {
         "fusedFrom": [
           {
             "sourceType": "gdacs",
-            "eventId": "gdacs-FL-1103885",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103885",
-            "detectedAt": "2026-05-18T11:15:36.000Z"
+            "eventId": "gdacs-WF-1028704",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028704",
+            "detectedAt": "2026-05-18T07:00:11.000Z"
           }
         ]
       }
@@ -480,6 +480,40 @@
             "eventId": "gdacs-FL-1103883",
             "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103883",
             "detectedAt": "2026-05-17T09:35:32.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "gdacs-FL-1103885",
+      "sourceType": "gdacs",
+      "hazardType": "flood",
+      "title": "Green flood alert in Austria",
+      "description": "On 15/05/2026, a flood started in Austria, lasting until 17/05/2026 (last update). The flood caused 0 deaths and 7 displaced .",
+      "lat": 47.2305949,
+      "lng": 13.3316861,
+      "occurredAt": "2026-05-15T01:00:00.000Z",
+      "detectedAt": "2026-05-18T11:15:36.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103885",
+      "country": "AUT",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "881e169567fffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-FL-1103885",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=FL&eventid=1103885",
+            "detectedAt": "2026-05-18T11:15:36.000Z"
           }
         ]
       }
@@ -697,7 +731,7 @@
       "lat": -20.04220316929763,
       "lng": 122.94931244479291,
       "occurredAt": "2026-05-15T00:00:00.000Z",
-      "detectedAt": "2026-05-19T23:01:32.000Z",
+      "detectedAt": "2026-05-20T03:01:24.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
       "country": "AUS",
@@ -717,7 +751,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028688",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028688",
-            "detectedAt": "2026-05-19T23:01:32.000Z"
+            "detectedAt": "2026-05-20T03:01:24.000Z"
           }
         ]
       }
@@ -898,8 +932,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in United States",
       "description": "On 14/05/2026, a forest fire started in United States,  until 19/05/2026.",
-      "lat": 33.625058637054345,
-      "lng": -105.32070131875797,
+      "lat": 33.62505770933545,
+      "lng": -105.32070588711987,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-17T11:01:29.000Z",
       "severity": "green",
@@ -995,6 +1029,40 @@
       }
     },
     {
+      "eventId": "gdacs-WF-1028713",
+      "sourceType": "gdacs",
+      "hazardType": "wildfire",
+      "title": "Green forest fire notification in Honduras",
+      "description": "On 14/05/2026, a forest fire started in Honduras,  until 19/05/2026.",
+      "lat": 14.53009958414129,
+      "lng": -86.9930675524236,
+      "occurredAt": "2026-05-14T00:00:00.000Z",
+      "detectedAt": "2026-05-19T23:02:28.000Z",
+      "severity": "green",
+      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028713",
+      "country": "HND",
+      "trustScore": {
+        "sourceIntegrity": 38,
+        "geospatial": 22,
+        "crossSource": 0,
+        "metadata": 9,
+        "total": 69
+      },
+      "h3Cell": "886d64d06dfffff",
+      "isFused": false,
+      "sourceCount": 1,
+      "lineage": {
+        "fusedFrom": [
+          {
+            "sourceType": "gdacs",
+            "eventId": "gdacs-WF-1028713",
+            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028713",
+            "detectedAt": "2026-05-19T23:02:28.000Z"
+          }
+        ]
+      }
+    },
+    {
       "eventId": "gdacs-WF-1028706",
       "sourceType": "gdacs",
       "hazardType": "wildfire",
@@ -1058,40 +1126,6 @@
             "eventId": "gdacs-WF-1028707",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028707",
             "detectedAt": "2026-05-19T03:02:12.000Z"
-          }
-        ]
-      }
-    },
-    {
-      "eventId": "gdacs-WF-1028713",
-      "sourceType": "gdacs",
-      "hazardType": "wildfire",
-      "title": "Green forest fire notification in Honduras",
-      "description": "On 14/05/2026, a forest fire started in Honduras,  until 19/05/2026.",
-      "lat": 14.530093218321989,
-      "lng": -86.99306519983091,
-      "occurredAt": "2026-05-14T00:00:00.000Z",
-      "detectedAt": "2026-05-19T23:02:28.000Z",
-      "severity": "green",
-      "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028713",
-      "country": "HND",
-      "trustScore": {
-        "sourceIntegrity": 38,
-        "geospatial": 22,
-        "crossSource": 0,
-        "metadata": 9,
-        "total": 69
-      },
-      "h3Cell": "886d64d06dfffff",
-      "isFused": false,
-      "sourceCount": 1,
-      "lineage": {
-        "fusedFrom": [
-          {
-            "sourceType": "gdacs",
-            "eventId": "gdacs-WF-1028713",
-            "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028713",
-            "detectedAt": "2026-05-19T23:02:28.000Z"
           }
         ]
       }
@@ -1442,8 +1476,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 11/05/2026, a forest fire started in Russian Federation,  until 19/05/2026.",
-      "lat": 53.39800363931356,
-      "lng": 126.81527769149362,
+      "lat": 53.39924223961586,
+      "lng": 126.80644565615364,
       "occurredAt": "2026-05-11T00:00:00.000Z",
       "detectedAt": "2026-05-18T07:04:23.000Z",
       "severity": "green",
@@ -1456,7 +1490,7 @@
         "metadata": 9,
         "total": 69
       },
-      "h3Cell": "881411983dfffff",
+      "h3Cell": "8814119807fffff",
       "isFused": false,
       "sourceCount": 1,
       "lineage": {
@@ -1476,8 +1510,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 11/05/2026, a forest fire started in Russian Federation,  until 19/05/2026.",
-      "lat": 52.71537619840186,
-      "lng": 127.25157439433166,
+      "lat": 52.714216577099954,
+      "lng": 127.25555359412316,
       "occurredAt": "2026-05-11T00:00:00.000Z",
       "detectedAt": "2026-05-16T03:02:23.000Z",
       "severity": "green",
@@ -1490,7 +1524,7 @@
         "metadata": 9,
         "total": 69
       },
-      "h3Cell": "88141159a3fffff",
+      "h3Cell": "8814114b49fffff",
       "isFused": false,
       "sourceCount": 1,
       "lineage": {
@@ -1615,7 +1649,7 @@
       "lat": -15.058321396883604,
       "lng": 130.11558744892565,
       "occurredAt": "2026-05-10T00:00:00.000Z",
-      "detectedAt": "2026-05-19T19:04:58.000Z",
+      "detectedAt": "2026-05-20T03:06:14.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
       "country": "AUS",
@@ -1635,7 +1669,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028691",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028691",
-            "detectedAt": "2026-05-19T19:04:58.000Z"
+            "detectedAt": "2026-05-20T03:06:14.000Z"
           }
         ]
       }
@@ -1649,7 +1683,7 @@
       "lat": -14.10092004947227,
       "lng": 132.0862481134685,
       "occurredAt": "2026-05-09T00:00:00.000Z",
-      "detectedAt": "2026-05-19T19:06:19.000Z",
+      "detectedAt": "2026-05-20T03:06:43.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
       "country": "AUS",
@@ -1669,7 +1703,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028692",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028692",
-            "detectedAt": "2026-05-19T19:06:19.000Z"
+            "detectedAt": "2026-05-20T03:06:43.000Z"
           }
         ]
       }
@@ -1713,9 +1747,9 @@
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Nicaragua",
-      "description": "On 08/05/2026, a forest fire started in Nicaragua,  until 17/05/2026.",
-      "lat": 13.626339076379034,
-      "lng": -84.1926451600293,
+      "description": "On 08/05/2026, a forest fire started in Nicaragua,  until 19/05/2026.",
+      "lat": 13.626343459021383,
+      "lng": -84.19263862383926,
       "occurredAt": "2026-05-08T00:00:00.000Z",
       "detectedAt": "2026-05-15T23:04:13.000Z",
       "severity": "green",
@@ -2501,7 +2535,7 @@
       "sourceType": "reliefweb",
       "hazardType": "cyclone",
       "title": "Typhoon Sinlaku - Apr 2026",
-      "description": "A new tropical cyclone named Sinlaku formed over the western North Pacific Ocean on 9 April and started moving north-west toward Guam and the far southern Northern Mariana Islands as a tropical storm. On 10 April at 0.00 UTC its centre was located over the ocean approximately 885 km south-east of Guam, with maximum sustained winds of 74 km/h. (ECHO, 10 Apr 2026)",
+      "description": "A tropical cyclone named Sinlaku formed over the western North Pacific Ocean on 9 April and started moving north-west toward Guam and the far southern Northern Mariana Islands as a tropical storm. On 10 April at 0.00 UTC its centre was located over the ocean approximately 885 km south-east of Guam, with maximum sustained winds of 74 km/h. (ECHO, 10 Apr 2026)",
       "lat": 7.43,
       "lng": 150.55,
       "occurredAt": "2026-04-09T00:00:00.000Z",
