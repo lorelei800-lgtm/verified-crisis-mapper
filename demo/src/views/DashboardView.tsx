@@ -131,6 +131,10 @@ export default function DashboardView({
   /** Ref so the map click handler always reads the current list without re-binding. */
   const verifiedRef = useRef<FusedEvent[]>([])
   verifiedRef.current = visibleVerifiedEvents
+  // Marker instances for the verified-events lane. We render these as DOM
+  // elements (rounded-square badges) rather than a MapLibre circle layer
+  // so they read as visually distinct from the citizen-report circles.
+  const verifiedMarkersRef = useRef<maplibregl.Marker[]>([])
 
   const isLoading = CMS.enabled && isCmsLoading && cmsReports === null
 
@@ -266,6 +270,20 @@ export default function DashboardView({
       paint: { 'text-color': '#ffffff' },
     })
 
+    // White halo underneath citizen pins — improves contrast against the
+    // satellite basemap (mixed greens/greys) without changing the meaningful
+    // tier-colour signal carried by the foreground pin.
+    map.addLayer({
+      id: 'points-halo', type: 'circle', source: 'reports',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': '#ffffff',
+        'circle-radius': 13,
+        'circle-opacity': 0.55,
+        'circle-blur': 0.35,
+      },
+    })
+
     map.addLayer({
       id: 'points', type: 'circle', source: 'reports',
       filter: ['!', ['has', 'point_count']],
@@ -356,69 +374,88 @@ export default function DashboardView({
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
     map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = 'crosshair' })
-    map.on('mouseenter', 'verified-points', () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'verified-points', () => { map.getCanvas().style.cursor = 'crosshair' })
-
-    // Layer-click handler for verified events: select and open the lineage panel.
-    map.on('click', 'verified-points', (e) => {
-      mapTapConsumedRef.current = true
-      layerConsumed = true
-      const feats = map.queryRenderedFeatures(e.point, { layers: ['verified-points'] })
-      if (!feats.length) return
-      const id = feats[0].properties!.id as string
-      const event = verifiedRef.current.find(v => v.eventId === id)
-      if (event) {
-        setSelectedVerified(event)
-        setSelectedReport(null)
-        setMobileListOpen(false)
-        setMapReportPin(null)
-      }
-    })
+    // Verified events use HTML markers (see the next useEffect) — their click
+    // handlers fire on the DOM element directly, so no layer-click wiring here.
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Verified-events MapLibre source + layer ───────────────────────────────
-  // Separate from the citizen-reports source so the two lanes are visually
-  // distinct and the source-filter UI can toggle each layer independently
-  // without re-clustering the citizen data.
+  // ── Verified-events HTML markers ──────────────────────────────────────────
+  // Rendered as rounded-square badges with the source-type letter (G / C / R)
+  // and a multi-source "2×" / "3×" pip when an event is cross-validated. This
+  // shape is intentionally distinct from the citizen-report circles so the
+  // operator can tell webhook signal apart from ground-truth at a glance.
+  // We use maplibregl.Marker (DOM-attached) rather than a circle layer because
+  // a square inside a circle stencil reads as "different category" instantly,
+  // and DOM markers carry CSS drop-shadow for free — better contrast against
+  // satellite imagery than MapLibre's flat circle paint.
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
 
-    const features = visibleVerifiedEvents.map(event => ({
-      type: 'Feature' as const,
-      properties: {
-        id:          event.eventId,
-        sourceType:  event.sourceType,
-        hazardType:  event.hazardType,
-        trustTotal:  event.trustScore.total,
-        sourceCount: event.sourceCount,
-        // Severity-derived stroke colour. Cross-validated events (sourceCount≥2)
-        // get a deeper blue to draw the eye to the most defensible signals.
-        color: event.sourceCount >= 2 ? '#1d4ed8'
-             : event.severity === 'red'    ? '#dc2626'
-             : event.severity === 'orange' ? '#f59e0b'
-             : '#3b82f6',
-      },
-      geometry: { type: 'Point' as const, coordinates: [event.lng, event.lat] },
-    }))
-    const geojson = { type: 'FeatureCollection' as const, features }
+    // Remove old markers (cheap: there are typically <100 verified events)
+    for (const m of verifiedMarkersRef.current) m.remove()
+    verifiedMarkersRef.current = []
 
-    const existing = map.getSource('verified') as maplibregl.GeoJSONSource | undefined
-    if (existing) { existing.setData(geojson); return }
+    for (const event of visibleVerifiedEvents) {
+      const color =
+        event.sourceCount >= 2 ? '#1d4ed8'                 // deep blue = cross-validated
+        : event.severity === 'red'    ? '#dc2626'
+        : event.severity === 'orange' ? '#f59e0b'
+        : '#3b82f6'                                          // single-source default
 
-    map.addSource('verified', { type: 'geojson', data: geojson })
-    map.addLayer({
-      id: 'verified-points', type: 'circle', source: 'verified',
-      paint: {
-        // Hollow circles to read as "wider context" rather than "report
-        // here"; the citizen pins (filled) remain the eye-catcher.
-        'circle-color': 'rgba(255,255,255,0.05)',
-        'circle-radius': ['case', ['>=', ['get', 'sourceCount'], 2], 14, 11],
-        'circle-stroke-width': ['case', ['>=', ['get', 'sourceCount'], 2], 3, 2],
-        'circle-stroke-color': ['get', 'color'],
-        'circle-stroke-opacity': 0.95,
-      },
-    })
+      const letter =
+        event.sourceType === 'gdacs'      ? 'G'
+        : event.sourceType === 'copernicus' ? 'C'
+        : event.sourceType === 'reliefweb'  ? 'R'
+        : '?'
+
+      const wrap = document.createElement('div')
+      wrap.style.cssText = 'position:relative;width:28px;height:28px;cursor:pointer;'
+      wrap.setAttribute('aria-label', `${event.sourceType} ${event.hazardType} verified event`)
+
+      const badge = document.createElement('div')
+      badge.style.cssText = `
+        width:28px;height:28px;background:#ffffff;
+        border:3px solid ${color};border-radius:6px;
+        box-shadow:0 2px 6px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.6);
+        display:flex;align-items:center;justify-content:center;
+        font:800 14px/1 system-ui,-apple-system,sans-serif;color:${color};
+        transition:transform .12s ease;
+      `
+      badge.textContent = letter
+      wrap.appendChild(badge)
+
+      if (event.sourceCount >= 2) {
+        const pip = document.createElement('div')
+        pip.style.cssText = `
+          position:absolute;top:-7px;right:-7px;
+          min-width:18px;height:18px;padding:0 4px;
+          background:#1d4ed8;color:#ffffff;
+          border:1.5px solid #ffffff;border-radius:9px;
+          font:800 10px/1 system-ui,sans-serif;
+          display:flex;align-items:center;justify-content:center;
+          box-shadow:0 1px 3px rgba(0,0,0,0.35);
+        `
+        pip.textContent = `${event.sourceCount}×`
+        wrap.appendChild(pip)
+      }
+
+      wrap.addEventListener('mouseenter', () => { badge.style.transform = 'scale(1.12)' })
+      wrap.addEventListener('mouseleave', () => { badge.style.transform = 'scale(1.0)' })
+
+      wrap.addEventListener('click', (e) => {
+        e.stopPropagation()
+        mapTapConsumedRef.current = true
+        setSelectedVerified(event)
+        setSelectedReport(null)
+        setMobileListOpen(false)
+        setMapReportPin(null)
+      })
+
+      const marker = new maplibregl.Marker({ element: wrap, anchor: 'center' })
+        .setLngLat([event.lng, event.lat])
+        .addTo(map)
+      verifiedMarkersRef.current.push(marker)
+    }
   }, [visibleVerifiedEvents, mapReady])
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -702,6 +739,23 @@ export default function DashboardView({
             <div className="flex items-center gap-1.5 py-0.5">
               <div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white"/>
               <span className="text-gray-600">Admin Verified</span>
+            </div>
+          </div>
+          {/* Webhook lane — distinct shape so the operator can tell at a
+              glance whether a pin came from a citizen (circle) or from a
+              public data feed (square badge). */}
+          <div className="border-t border-gray-100 mt-1.5 pt-1.5 space-y-0.5">
+            <div className="font-semibold text-gray-700 mb-1">Verified Sources</div>
+            <div className="flex items-center gap-1.5 py-0.5">
+              <div className="w-4 h-4 rounded bg-white border-[2.5px] border-blue-600 flex items-center justify-center text-[8px] font-extrabold text-blue-600 leading-none">G</div>
+              <span className="text-gray-600">GDACS / Copernicus / ReliefWeb</span>
+            </div>
+            <div className="flex items-center gap-1.5 py-0.5">
+              <div className="relative w-4 h-4">
+                <div className="w-4 h-4 rounded bg-white border-[2.5px] border-blue-700"/>
+                <div className="absolute -top-1 -right-1 min-w-[10px] h-[10px] px-[2px] bg-blue-700 text-white border border-white rounded-full text-[7px] font-extrabold leading-[10px] text-center">2×</div>
+              </div>
+              <span className="text-gray-600">Cross-validated (≥2 sources)</span>
             </div>
           </div>
         </div>
