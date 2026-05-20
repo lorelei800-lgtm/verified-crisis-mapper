@@ -143,31 +143,40 @@ async function publishItem (model, itemId) {
 }
 
 /**
- * Bulk-PATCH; on 400 fall back to one-field-at-a-time so the offender
- * (e.g. a field whose key doesn't exist in the CMS schema) is identified
- * by the log AND the other fields still land.
+ * Patch result. `ok` means at least one field landed. `denied` means the row
+ * is read-only to this Integration token (Re:Earth CMS denies PATCH on items
+ * that were originally created via the web UI rather than the API). The
+ * caller treats `denied` as a soft warning, not a failure, because that case
+ * is normally resolved by the user editing the row directly in the UI.
  */
 async function patchItem (model, itemId, fields) {
-  if (flags.dryRun) { console.log(`   [dry-run] PATCH ${model}/${itemId} (${fields.length} fields)`); return true }
+  if (flags.dryRun) { console.log(`   [dry-run] PATCH ${model}/${itemId} (${fields.length} fields)`); return { ok: true, denied: false } }
 
   const bulk = await rawPatch(model, itemId, fields)
   if (bulk.ok) {
     await publishItem(model, itemId)
-    return true
+    return { ok: true, denied: false }
   }
   console.warn(`   ⚠ PATCH ${model}/${itemId} (bulk) → ${bulk.status}: ${bulk.body.slice(0, 200)}`)
-  if (bulk.status !== 400) return false   // 401/403/404 won't get fixed by retry
+  if (bulk.status !== 400) return { ok: false, denied: false }   // 401/403/404 won't get fixed by retry
 
   console.log(`   ↪ retrying field-by-field to identify the offender…`)
-  let ok = 0, bad = 0
+  let ok = 0, bad = 0, deniedCount = 0
   for (const f of fields) {
     const r = await rawPatch(model, itemId, [f])
     if (r.ok) { ok += 1; console.log(`     ✅ ${f.key}`) }
-    else      { bad += 1; console.log(`     ❌ ${f.key} → ${r.status}: ${r.body.slice(0, 120)}`) }
+    else {
+      bad += 1
+      if (r.body.includes('operation denied')) deniedCount += 1
+      console.log(`     ❌ ${f.key} → ${r.status}: ${r.body.slice(0, 120)}`)
+    }
   }
   await publishItem(model, itemId)
   console.log(`   ↪ field-by-field result: ${ok} ok / ${bad} rejected`)
-  return ok > 0
+  // "Every field denied" is the Re:Earth-CMS-row-locked-to-UI pattern. Surface
+  // it as denied (soft warning) so the caller can exit 0 without alarming
+  // red text when the row was already updated by hand in the CMS UI.
+  return { ok: ok > 0, denied: ok === 0 && deniedCount === fields.length }
 }
 
 async function deleteItem (model, itemId) {
@@ -209,6 +218,14 @@ async function createItem (model, fields, asPublic = true) {
 
 // ── step 1: deployment-config → Bangkok ──────────────────────────────────────
 
+/**
+ * @returns {Promise<'ok' | 'denied' | 'failed'>}
+ *   'ok'     — at least one row was PATCHed and re-published successfully
+ *   'denied' — row(s) exist but Re:Earth CMS denies API writes on them; the
+ *              user must update via the web UI instead (already-correct
+ *              rows fall into this bucket and require no further action)
+ *   'failed' — listing failed, or some other hard error
+ */
 async function fixDeploymentConfig () {
   console.log('🛠️  Step 1: deployment-config → Bangkok')
   let configs
@@ -216,7 +233,7 @@ async function fixDeploymentConfig () {
     configs = await listAllItems(CONFIG_MODEL)
   } catch (err) {
     console.warn(`   ⚠ Could not list ${CONFIG_MODEL}: ${err.message}`)
-    return false
+    return 'failed'
   }
   console.log(`   Found ${configs.length} existing deployment-config row(s)`)
 
@@ -224,10 +241,10 @@ async function fixDeploymentConfig () {
 
   if (configs.length === 0) {
     console.log('   No row found — creating a fresh Bangkok deployment-config')
-    return createItem(CONFIG_MODEL, fields)
+    return (await createItem(CONFIG_MODEL, fields)) ? 'ok' : 'failed'
   }
 
-  let ok = true
+  let anyOk = false, allDenied = true
   for (const c of configs) {
     const id = c.id
     // Integration API may return fields either as top-level keys (public-read
@@ -237,11 +254,27 @@ async function fixDeploymentConfig () {
       ? Object.fromEntries(c.fields.map(f => [f.key, f.value]))
       : c
     const before = flat.scenario_label ?? flat.title ?? '(unknown)'
-    const success = await patchItem(CONFIG_MODEL, id, fields)
-    console.log(`   ${success ? '✅' : '❌'} ${id}  "${before}" → "${BANGKOK_CONFIG.scenario_label}"`)
-    if (!success) ok = false
+    const result = await patchItem(CONFIG_MODEL, id, fields)
+    if (result.ok) {
+      anyOk = true; allDenied = false
+      console.log(`   ✅ ${id}  "${before}" → "${BANGKOK_CONFIG.scenario_label}"`)
+    } else if (result.denied) {
+      console.log(`   ⏭  ${id}  PATCH denied by CMS — row was likely created in the web UI`)
+      console.log(`       Current value: "${before}"`)
+      console.log(`       Expected:      "${BANGKOK_CONFIG.scenario_label}"`)
+      if (before === BANGKOK_CONFIG.scenario_label) {
+        console.log(`       ✓ already matches target — no further action needed`)
+      } else {
+        console.log(`       ⚠ Please edit this row directly in the Re:Earth CMS web UI.`)
+      }
+    } else {
+      allDenied = false
+      console.log(`   ❌ ${id}  "${before}" → PATCH failed (see warning above)`)
+    }
   }
-  return ok
+  if (anyOk)     return 'ok'
+  if (allDenied) return 'denied'
+  return 'failed'
 }
 
 // ── step 2: damage-report wipe + seed ────────────────────────────────────────
@@ -293,8 +326,25 @@ async function resetDamageReports () {
 // ── main ─────────────────────────────────────────────────────────────────────
 
 const t0 = Date.now()
-const r1 = await fixDeploymentConfig()
-const r2 = await resetDamageReports()
+const r1 = await fixDeploymentConfig()         // 'ok' | 'denied' | 'failed'
+const r2 = await resetDamageReports()          // boolean
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
-console.log(`\n🏁 Done in ${elapsed}s.  config=${r1 ? 'ok' : 'FAIL'}  reports=${r2 ? 'ok' : 'FAIL'}`)
-process.exit(r1 && r2 ? 0 : 1)
+
+const configLabel  = r1 === 'ok' ? 'ok' : r1 === 'denied' ? 'denied (UI-managed)' : 'FAIL'
+const reportsLabel = r2 ? 'ok' : 'FAIL'
+console.log(`\n🏁 Done in ${elapsed}s.  config=${configLabel}  reports=${reportsLabel}`)
+
+if (r1 === 'denied' && r2) {
+  console.log(`
+ℹ️  The deployment-config row is read-only to this Integration token, so the
+   script could not PATCH it. This is expected for rows created via the
+   Re:Earth CMS web UI. If the row already shows Bangkok values on the live
+   dashboard, no further action is needed. Otherwise edit it in the CMS UI:
+   https://cms.reearth.io  →  Workspace  →  deployment-config  →  edit row
+`)
+}
+
+// Success contract:
+//   - config 'ok' or 'denied' counts as non-blocking, AND
+//   - damage-reports updated successfully.
+process.exit(r2 && r1 !== 'failed' ? 0 : 1)
