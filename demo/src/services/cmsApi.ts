@@ -45,8 +45,13 @@ interface CmsAsset {
  */
 interface CmsItem {
   id: string
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
+  // Some Re:Earth CMS deployments expose timestamps as snake_case at the
+  // top level rather than camelCase — accept either so the dashboard "Time"
+  // row doesn't show as blank after a fresh bootstrap-bangkok run.
+  created_at?: string
+  updated_at?: string
   // damage report fields ↓
   damage_level?: string
   infra_type?: string
@@ -58,6 +63,8 @@ interface CmsItem {
   has_c2pa?: boolean
   h3_cell?: string
   image?: CmsAsset | null
+  /** Optional explicit scenario timestamp (seeded by bootstrap-bangkok.mjs). */
+  timestamp?: string
   trust_score_total?: number
   trust_score_image?: number
   trust_score_geo?: number
@@ -91,7 +98,10 @@ function cmsItemToReport(item: CmsItem): DamageReport {
     infraType:  (item.infra_type   as InfraType)       ?? 'other',
     landmark:   item.landmark  ?? '',
     district:   item.district  ?? '',
-    timestamp:  item.createdAt,
+    // Prefer the scenario-provided timestamp (seeded by bootstrap), then the
+    // CMS's own creation time in either camel or snake case. Falls back to an
+    // empty string so formatDate renders "—" rather than "Invalid Date".
+    timestamp:  item.timestamp ?? item.createdAt ?? item.created_at ?? '',
     channel:    (item.channel  as SubmissionChannel)   ?? 'browser',
     hasC2PA:    item.has_c2pa  ?? false,
     h3Cell:     item.h3_cell   ?? '',

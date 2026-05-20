@@ -84,6 +84,20 @@ console.log(`⚙️  Mode:     ${flags.dryRun ? 'dry-run' : flags.keepExisting ?
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const toFields = obj => Object.entries(obj).map(([key, value]) => ({ key, value }))
 
+/**
+ * Map an index in [0, total-1] to an ISO timestamp linearly spread across
+ * 06:00–18:00 UTC on 2026-10-14 — the Bangkok-flood scenario day. Gives the
+ * 28 seeded reports a believable timeline rather than the same bootstrap-run
+ * timestamp.
+ */
+function scenarioTimestamp (index, total) {
+  // Month is 0-indexed in Date.UTC — 9 = October.
+  const start = Date.UTC(2026, 9, 14,  6, 0, 0)
+  const end   = Date.UTC(2026, 9, 14, 18, 0, 0)
+  const ratio = total > 1 ? index / (total - 1) : 0
+  return new Date(start + Math.floor((end - start) * ratio)).toISOString()
+}
+
 async function fetchJson (url, init = {}) {
   const res = await fetch(url, { ...init, signal: AbortSignal.timeout(15000) })
   if (!res.ok) {
@@ -260,11 +274,16 @@ async function resetDamageReports () {
   console.log(`   Seeding ${BANGKOK_REPORTS.length} Bangkok rows…`)
   let created = 0
   for (let i = 0; i < BANGKOK_REPORTS.length; i++) {
-    const report = BANGKOK_REPORTS[i]
+    // Stamp each report with a believable disaster-day timestamp so the
+    // dashboard "Time" column reads as a timeline rather than as 28 rows
+    // posted in the same second. We spread the rows linearly across
+    // 06:00–18:00 UTC on 2026-10-14 (~25 min per report), matching the
+    // typical first-12-hour reporting window of an urban flood event.
+    const report = { ...BANGKOK_REPORTS[i], timestamp: scenarioTimestamp(i, BANGKOK_REPORTS.length) }
     const ok = await createItem(MODEL, toFields(report))
     if (ok) created += 1
     const tag = `[${String(i + 1).padStart(2, '0')}/${BANGKOK_REPORTS.length}]`
-    console.log(`   ${ok ? '✅' : '❌'} ${tag} ${report.district} · ${report.tier}`)
+    console.log(`   ${ok ? '✅' : '❌'} ${tag} ${report.district} · ${report.tier} · ${report.timestamp.slice(11, 16)}`)
     await sleep(200)
   }
   console.log(`   ✅ Created ${created}/${BANGKOK_REPORTS.length}`)

@@ -58,12 +58,20 @@ export default function DashboardView({
   const [mobileListOpen, setMobileListOpen] = useState(true)
   const [statsOpen,      setStatsOpen]      = useState(true)
   /**
-   * Active basemap. 'satellite' is the dramatic option that shows the actual
-   * disaster zone topology; 'light' is the Google-Maps-style grey background
-   * that makes pins pop. We default to satellite (matches the screenshots in
-   * the proposal); a toggle in the bottom-right lets the operator flip.
+   * Active basemap. 'light' is the Google-Maps-style grey background that
+   * makes pins pop (default — best pin clarity); 'satellite' is the dramatic
+   * option that shows the actual disaster zone topology. Toggle button next
+   * to the navigation control lets the operator flip with one tap.
    */
-  const [basemap, setBasemap] = useState<'satellite' | 'light'>('satellite')
+  const [basemap, setBasemap] = useState<'satellite' | 'light'>('light')
+  /**
+   * Collapse state for each sidebar section. Tier-filter is intentionally
+   * always expanded (it's the primary filter); the other sections can be
+   * folded away on a small screen / narrow desktop.
+   */
+  const [collapsed, setCollapsed] = useState<Record<'verified' | 'type', boolean>>({
+    verified: false, type: false,
+  })
   const [isPullRefreshing, setIsPullRefreshing] = useState(false)
   /** Coordinates of a map-click pin — shown as "Report here?" strip until dismissed */
   const [mapReportPin, setMapReportPin] = useState<{ lat: number; lng: number } | null>(null)
@@ -210,10 +218,11 @@ export default function DashboardView({
           },
         },
         layers: [
-          // Carto-light is rendered first (i.e. underneath) but starts hidden
-          // — keeps draw order stable when the user flips the toggle.
-          { id: 'carto-light',     type: 'raster', source: 'carto-light',     layout: { visibility: 'none' } },
-          { id: 'esri-satellite',  type: 'raster', source: 'esri-satellite',  layout: { visibility: 'visible' } },
+          // Both basemaps are attached at init time; visibility is toggled
+          // via setLayoutProperty. Light is the default — pins read better
+          // against grey than against the busy satellite imagery.
+          { id: 'esri-satellite',  type: 'raster', source: 'esri-satellite',  layout: { visibility: 'none' } },
+          { id: 'carto-light',     type: 'raster', source: 'carto-light',     layout: { visibility: 'visible' } },
         ],
       },
       bounds,
@@ -287,30 +296,16 @@ export default function DashboardView({
     const src = map.getSource('reports') as maplibregl.GeoJSONSource | undefined
     if (src) { src.setData(geojson); return }
 
-    // First-time setup: source + layers + event handlers
+    // First-time setup: source + layers + event handlers.
+    //
+    // Clustering is disabled by design — the typical demo scope is a single
+    // city with ~30 citizen reports, so clusters mostly hide signal and the
+    // user reported pins "disappearing" at lower zoom levels (they were
+    // collapsing into a single 28-count cluster). The cluster aggregation
+    // can be reintroduced for large-scale deployments later; for now every
+    // pin always renders individually for visual clarity.
     map.addSource('reports', {
       type: 'geojson', data: geojson,
-      cluster: true, clusterMaxZoom: 12, clusterRadius: 45,
-    })
-
-    map.addLayer({
-      id: 'clusters', type: 'circle', source: 'reports',
-      filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': ['step', ['get', 'point_count'], '#60a5fa', 5, '#3b82f6', 15, '#1d4ed8'],
-        'circle-radius': ['step', ['get', 'point_count'], 16, 5, 22, 15, 28],
-        'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff',
-      },
-    })
-
-    map.addLayer({
-      id: 'cluster-count', type: 'symbol', source: 'reports',
-      filter: ['has', 'point_count'],
-      layout: {
-        'text-field': '{point_count_abbreviated}', 'text-size': 11,
-        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-      },
-      paint: { 'text-color': '#ffffff' },
     })
 
     // White halo underneath citizen pins — improves contrast against the
@@ -381,19 +376,6 @@ export default function DashboardView({
     canvas.addEventListener('pointerdown', onPtrDown)
     canvas.addEventListener('pointerup',   onPtrUp)
 
-    map.on('click', 'clusters', async (e) => {
-      mapTapConsumedRef.current = true   // mark consumed for the old click path
-      layerConsumed = true               // mark for pointerup timeout
-      const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
-      if (!feats.length) return
-      const clusterId = feats[0].properties!.cluster_id as number
-      const coords = (feats[0].geometry as unknown as { coordinates: [number, number] }).coordinates
-      try {
-        const zoom = await (map.getSource('reports') as maplibregl.GeoJSONSource).getClusterExpansionZoom(clusterId)
-        map.easeTo({ center: coords, zoom })
-      } catch { /* ignore */ }
-    })
-
     map.on('click', 'points', (e) => {
       mapTapConsumedRef.current = true   // mark consumed for the old click path
       layerConsumed = true               // mark for pointerup timeout
@@ -413,10 +395,8 @@ export default function DashboardView({
     // listeners on the canvas (see above).  This avoids MapLibre v4's
     // PointerEvent↔TouchEvent mismatch on Android Chrome.
 
-    map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = 'crosshair' })
-    map.on('mouseenter', 'points',   () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'points',   () => { map.getCanvas().style.cursor = 'crosshair' })
+    map.on('mouseenter', 'points', () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', 'points', () => { map.getCanvas().style.cursor = 'crosshair' })
     // Verified events use HTML markers (see the next useEffect) — their click
     // handlers fire on the DOM element directly, so no layer-click wiring here.
   }, [filteredReports, mapReady, reviewMap]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -578,9 +558,14 @@ export default function DashboardView({
         {/* Data-source filter (webhook lane) — toggles verified-events visibility */}
         <div className="px-3 pb-2 pt-2 border-b border-gray-100 space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400">
+            <button
+              onClick={() => setCollapsed(prev => ({ ...prev, verified: !prev.verified }))}
+              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+              title={collapsed.verified ? 'Expand' : 'Collapse'}
+            >
+              <span aria-hidden="true">{collapsed.verified ? '▸' : '▾'}</span>
               Verified Sources <span className="text-gray-300">({visibleVerifiedEvents.length})</span>
-            </span>
+            </button>
             <button
               onClick={() => setVerifiedFilter(verifiedFilter === 'show' ? 'hide' : 'show')}
               className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
@@ -591,7 +576,7 @@ export default function DashboardView({
               {verifiedFilter === 'show' ? 'On' : 'Off'}
             </button>
           </div>
-          {verifiedFilter === 'show' && (
+          {!collapsed.verified && verifiedFilter === 'show' && (
             <div className="flex flex-wrap gap-1">
               {(['gdacs', 'copernicus', 'reliefweb'] as const).map(s => (
                 <button
@@ -611,21 +596,30 @@ export default function DashboardView({
 
         {/* Infra type filter */}
         <div className="px-3 pb-2 border-b border-gray-100">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="text-[10px] text-gray-400">Type:</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <button onClick={() => setInfraFilter('all')}
-              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              All
+          <div className="flex items-center justify-between mb-1">
+            <button
+              onClick={() => setCollapsed(prev => ({ ...prev, type: !prev.type }))}
+              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+              title={collapsed.type ? 'Expand' : 'Collapse'}
+            >
+              <span aria-hidden="true">{collapsed.type ? '▸' : '▾'}</span>
+              Type {infraFilter !== 'all' && <span className="text-blue-500 font-medium">· {infraTypeLabel[infraFilter as InfraType]}</span>}
             </button>
-            {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => setInfraFilter(key)}
-                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                {label}
-              </button>
-            ))}
           </div>
+          {!collapsed.type && (
+            <div className="flex flex-wrap gap-1">
+              <button onClick={() => setInfraFilter('all')}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                All
+              </button>
+              {(Object.entries(infraTypeLabel) as [InfraType, string][]).map(([key, label]) => (
+                <button key={key} onClick={() => setInfraFilter(key)}
+                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${infraFilter === key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -697,23 +691,20 @@ export default function DashboardView({
       <div className="flex-1 relative" style={{ minHeight: '400px', minWidth: 0 }}>
         <div ref={mapContainer} style={{position:'absolute',top:0,left:0,right:0,bottom:0,width:'100%',height:'100%'}}/>
 
-        {/* ── Basemap toggle (satellite / light) ── */}
-        {/* Placed below the NavigationControl (which sits at top-right) so it
-            doesn't collide. The light style gives pin clarity at the cost of
-            disaster-zone realism; the satellite style is the opposite. */}
-        <div className="absolute top-24 right-2 z-10 bg-white rounded-lg shadow-md overflow-hidden text-[11px] font-medium flex flex-col">
-          <button
-            onClick={() => setBasemap('satellite')}
-            className={`px-2.5 py-1.5 transition-colors ${basemap === 'satellite' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            title="Show satellite imagery"
-          >🛰 Satellite</button>
-          <div className="h-px bg-gray-200"/>
-          <button
-            onClick={() => setBasemap('light')}
-            className={`px-2.5 py-1.5 transition-colors ${basemap === 'light' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            title="Show light basemap (best for pin readability)"
-          >🗺 Light</button>
-        </div>
+        {/* ── Basemap toggle ── */}
+        {/* Sits directly below the MapLibre NavigationControl group and
+            mimics its styling (29×29 white square, 4-px radius, same shadow)
+            so the four-button stack reads as one cohesive control. Clicking
+            flips to the OPPOSITE basemap; the icon shows what you'll get. */}
+        <button
+          onClick={() => setBasemap(b => b === 'satellite' ? 'light' : 'satellite')}
+          title={basemap === 'satellite' ? 'Switch to light basemap (clearer pins)' : 'Switch to satellite imagery'}
+          aria-label="Toggle basemap"
+          className="absolute right-2.5 z-10 w-[29px] h-[29px] flex items-center justify-center bg-white hover:bg-gray-50 active:bg-gray-100 border border-gray-200 rounded shadow text-base leading-none transition-colors"
+          style={{ top: 'calc(0.625rem + 88px)' }}
+        >
+          <span aria-hidden="true">{basemap === 'satellite' ? '🗺' : '🛰'}</span>
+        </button>
 
         {/* ── Mobile stats overlay ── */}
         <div className="lg:hidden absolute top-2 left-2 right-14 z-10 bg-white bg-opacity-95 rounded-xl shadow-md overflow-hidden">
@@ -839,9 +830,21 @@ export default function DashboardView({
                 <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
               </div>
             </div>
-            {selectedReport.imageUrl && (
+            {selectedReport.imageUrl ? (
               <img src={selectedReport.imageUrl} alt="damage photo" className="w-full h-36 object-cover"
-                onError={e => { (e.target as HTMLImageElement).style.display='none' }}/>
+                onError={e => {
+                  // Image load failed (broken URL, network, CMS asset purge) —
+                  // hide the broken-image icon. The card below handles the
+                  // photo-less case via the conditional rendering above, but
+                  // here we already committed the <img>, so just blank it.
+                  (e.target as HTMLImageElement).style.display='none'
+                }}/>
+            ) : (
+              <DamageHero
+                damageLevel={selectedReport.damageLevel}
+                infraType={selectedReport.infraType}
+                tier={selectedReport.tier}
+              />
             )}
             <div className="p-3 space-y-1.5 text-xs">
               <InfoRow label="District" value={selectedReport.district}/>
@@ -1097,6 +1100,41 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex gap-1">
       <span className="text-gray-400 w-14 shrink-0">{label}</span>
       <span className="text-gray-700 font-medium">{value}</span>
+    </div>
+  )
+}
+
+/**
+ * Visual hero for citizen-report cards that don't have a photo (e.g. reports
+ * seeded via the bootstrap script). Mirrors the layout of the real damage
+ * photo, so cards with and without imageUrl feel structurally identical.
+ */
+function DamageHero({ damageLevel, infraType, tier }:
+  { damageLevel: import('../types').DamageLevel; infraType: import('../types').InfraType; tier: import('../types').TrustTier }) {
+  const damageIcon =
+    damageLevel === 'destroyed' ? '🏚️'
+    : damageLevel === 'partial' ? '🏠'
+    : '📍'
+  const infraIcon =
+    infraType === 'residential' ? '🏘️'
+    : infraType === 'commercial' ? '🏪'
+    : infraType === 'government' ? '🏛️'
+    : infraType === 'utility'   ? '⚡'
+    : infraType === 'transport' ? '🛣️'
+    : infraType === 'community' ? '🏟️'
+    : infraType === 'public_space' ? '🌳'
+    : '📦'
+  const tint =
+    tier === 'red'   ? 'from-red-100 to-red-50'
+    : tier === 'amber' ? 'from-amber-100 to-amber-50'
+    : 'from-emerald-100 to-emerald-50'
+  return (
+    <div className={`relative h-28 flex items-center justify-center gap-2 bg-gradient-to-br ${tint}`}>
+      <span className="text-5xl" role="img" aria-hidden="true">{damageIcon}</span>
+      <span className="text-3xl opacity-70" role="img" aria-hidden="true">{infraIcon}</span>
+      <span className="absolute bottom-1.5 right-2 text-[10px] uppercase tracking-wider font-bold text-gray-500 bg-white bg-opacity-80 px-1.5 py-0.5 rounded">
+        No photo
+      </span>
     </div>
   )
 }
