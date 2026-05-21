@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T00:13:04.703Z",
+  "generatedAt": "2026-05-21T05:13:02.038Z",
   "eventCount": 82,
   "events": [
     {
@@ -312,8 +312,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Russian Federation",
       "description": "On 18/05/2026, a forest fire started in Russian Federation,  until 20/05/2026.",
-      "lat": 51.726389306798694,
-      "lng": 129.18239982902298,
+      "lat": 51.72634262968735,
+      "lng": 129.1823693542867,
       "occurredAt": "2026-05-18T00:00:00.000Z",
       "detectedAt": "2026-05-20T07:00:16.000Z",
       "severity": "green",
@@ -417,7 +417,7 @@
       "lat": -14.285040452712572,
       "lng": 26.262433963080674,
       "occurredAt": "2026-05-18T00:00:00.000Z",
-      "detectedAt": "2026-05-20T23:00:41.000Z",
+      "detectedAt": "2026-05-21T03:00:51.000Z",
       "severity": "green",
       "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
       "country": "ZMB",
@@ -437,7 +437,7 @@
             "sourceType": "gdacs",
             "eventId": "gdacs-WF-1028710",
             "url": "https://www.gdacs.org/report.aspx?eventtype=WF&eventid=1028710",
-            "detectedAt": "2026-05-20T23:00:41.000Z"
+            "detectedAt": "2026-05-21T03:00:51.000Z"
           }
         ]
       }
@@ -482,8 +482,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Mexico",
       "description": "On 17/05/2026, a forest fire started in Mexico,  until 20/05/2026.",
-      "lat": 18.395016098808508,
-      "lng": -91.67560501587431,
+      "lat": 18.395016251620216,
+      "lng": -91.67560508892406,
       "occurredAt": "2026-05-17T00:00:00.000Z",
       "detectedAt": "2026-05-18T23:00:09.000Z",
       "severity": "green",
@@ -1162,8 +1162,8 @@
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Honduras",
       "description": "On 14/05/2026, a forest fire started in Honduras,  until 20/05/2026.",
-      "lat": 14.526595209041018,
-      "lng": -86.99410847725112,
+      "lat": 14.527593298354054,
+      "lng": -86.99388382682427,
       "occurredAt": "2026-05-14T00:00:00.000Z",
       "detectedAt": "2026-05-19T23:02:28.000Z",
       "severity": "green",
@@ -1365,7 +1365,7 @@
       "sourceType": "gdacs",
       "hazardType": "wildfire",
       "title": "Green forest fire notification in Venezuela",
-      "description": "On 13/05/2026, a forest fire started in Venezuela,  until 19/05/2026.",
+      "description": "On 13/05/2026, a forest fire started in Venezuela,  until 20/05/2026.",
       "lat": 8.564449166330371,
       "lng": -62.69259545537023,
       "occurredAt": "2026-05-13T00:00:00.000Z",
